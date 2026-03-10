@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CNC 專業產生器 - 材料與安全補正版</title>
+    <style>
+        :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --warning: #fbbf24; --text: #f1f5f9; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        @media (max-width: 950px) {
+            body { flex-direction: column; overflow-y: auto; height: auto; }
+            .sidebar { width: 100% !important; height: auto !important; border-right: none !important; }
+            .viewport { height: 350px !important; flex: none !important; }
+        }
+
+        .sidebar { width: 500px; background: var(--panel); border-right: 1px solid #334155; display: flex; flex-direction: column; flex-shrink: 0; }
+        .header { padding: 15px; background: #0f172a; border-bottom: 2px solid var(--accent); }
+        .config-grid { padding: 12px; background: #334155; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-bottom: 1px solid #475569; }
+        .config-grid h4 { grid-column: span 2; margin: 4px 0; font-size: 11px; color: var(--warning); text-transform: uppercase; }
+
+        .scroll-area { flex: 1; padding: 12px; overflow-y: auto; background: #1e293b; }
+        .point-item { background: #0f172a; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr 1fr 35px; gap: 6px; border: 1px solid #334155; }
+        
+        label { font-size: 10px; color: #94a3b8; margin-bottom: 2px; display: block; }
+        input, select { background: #1e293b; border: 1px solid #475569; color: #fff; padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 14px; }
+        
+        .viewport { flex: 1; position: relative; background: #000; overflow: hidden; }
+        canvas { width: 100%; height: 100%; touch-action: none; }
+        
+        .footer { padding: 15px; background: #0f172a; border-top: 1px solid #334155; }
+        pre { background: #000; color: #a5d6ff; padding: 10px; border-radius: 6px; height: 130px; overflow: auto; font-family: 'Consolas', monospace; font-size: 12px; border: 1px solid #334155; }
+        
+        .btn { padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-add { background: #475569; color: white; margin: 0 15px 10px; width: calc(100% - 30px); }
+        .btn-gen { background: var(--accent); color: #0f172a; width: 100%; font-size: 15px; }
+        
+        .canvas-ui { position: absolute; bottom: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .btn-ui { background: rgba(0,0,0,0.6); color: var(--accent); border: 1px solid var(--accent); padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="header"><h3 style="margin:0;">CNC 專業產生器 - 材料與安全補正版</h3></div>
+    
+    <div class="config-grid">
+        <h4>1. 胚料與材料 (Stock & Material)</h4>
+        <div>
+            <label>胚料直徑 (Stock X)</label>
+            <input type="number" id="stockX" value="50" oninput="update()">
+        </div>
+        <div>
+            <label>加工材料</label>
+            <select id="material" onchange="applyMaterial()">
+                <option value="250">鋁合金 (Vc: 250)</option>
+                <option value="180">中碳鋼 S45C (Vc: 180)</option>
+                <option value="120">不鏽鋼 SUS304 (Vc: 120)</option>
+                <option value="80">合金鋼 SCM440 (Vc: 80)</option>
+                <option value="200">黃銅 (Vc: 200)</option>
+            </select>
+        </div>
+
+        <h4>2. 刀具與轉速 (Tool & Speed)</h4>
+        <div>
+            <label>切削速度 Vc (m/min)</label>
+            <input type="number" id="vc" value="180" oninput="update()">
+        </div>
+        <div>
+            <label>建議轉速 S (RPM)</label>
+            <input type="text" id="calcS" readonly style="color:var(--warning); border:none; background:transparent; font-weight:bold;">
+        </div>
+        <div>
+            <label>刀尖半徑 Tool R</label>
+            <input type="number" id="toolR" value="0.4" step="0.4" oninput="update()">
+        </div>
+        <div>
+            <label>加工模式</label>
+            <select id="mode" onchange="update()">
+                <option value="OD">外徑 (OD)</option>
+                <option value="ID">內徑 (ID)</option>
+            </select>
+        </div>
+
+        <h4>3. G71 循環設定</h4>
+        <div><label>切深 U (單邊)</label><input type="number" id="cutU" value="2.0"></div>
+        <div><label>精修預留 U</label><input type="number" id="finishU" value="0.4"></div>
+    </div>
+
+    <div class="scroll-area" id="point-list"></div>
+    
+    <button class="btn btn-add" onclick="addPoint()">+ 新增輪廓座標</button>
+
+    <div class="footer">
+        <pre id="output">尚未產生 G-Code...</pre>
+        <button class="btn btn-gen" onclick="generateNC()">產生安全 G71 程式碼</button>
+    </div>
+</div>
+
+<div class="viewport" id="vbox">
+    <canvas id="cvs"></canvas>
+    <div class="canvas-ui">
+        <button class="btn-ui" onclick="zoomExtents()">▣ 自動視角</button>
+        <button class="btn-ui" onclick="downloadNC()">💾 下載 .NC</button>
+    </div>
+</div>
+
+<script>
+    const cvs = document.getElementById('cvs');
+    const ctx = cvs.getContext('2d');
+    const vbox = document.getElementById('vbox');
+    let cam = { x: 50, y: 0, zoom: 4.5 };
+    let drag = false, lastM = { x: 0, y: 0 };
+
+    function applyMaterial() {
+        document.getElementById('vc').value = document.getElementById('material').value;
+        update();
+    }
+
+    function addPoint(x=40, z=-20) {
+        const div = document.createElement('div');
+        div.className = 'point-item';
+        div.innerHTML = `
+            <div><label>X (直徑)</label><input type="number" class="val-x" value="${x}" oninput="update()"></div>
+            <div><label>Z (長度)</label><input type="number" class="val-z" value="${z}" oninput="update()"></div>
+            <div><label>R (圓角)</label><input type="number" class="val-r" value="0" oninput="update()"></div>
+            <button onclick="this.parentElement.remove(); update()" style="background:none; border:none; color:#f87171; font-size:22px; cursor:pointer;">×</button>
+        `;
+        document.getElementById('point-list').appendChild(div);
+        update();
+    }
+
+    function getPts() {
+        return Array.from(document.querySelectorAll('.point-item')).map(el => ({
+            x: parseFloat(el.querySelector('.val-x').value) || 0,
+            z: parseFloat(el.querySelector('.val-z').value) || 0,
+            r: parseFloat(el.querySelector('.val-r').value) || 0
+        }));
+    }
+
+    function update() {
+        cvs.width = vbox.clientWidth; cvs.height = vbox.clientHeight;
+        if(cam.y === 0) cam.y = cvs.height / 2;
+        
+        const pts = getPts();
+        const stockX = parseFloat(document.getElementById('stockX').value) || 0;
+        const vc = parseFloat(document.getElementById('vc').value);
+
+        // 計算轉速 S = (Vc * 1000) / (PI * D)
+        const maxD = Math.max(...pts.map(p => p.x), stockX, 1);
+        const rpm = Math.round((vc * 1000) / (Math.PI * maxD));
+        document.getElementById('calcS').value = rpm + " RPM";
+
+        ctx.save();
+        ctx.translate(cam.x, cam.y);
+        ctx.scale(cam.zoom, cam.zoom);
+
+        // 畫中心線
+        ctx.strokeStyle = '#222'; ctx.lineWidth = 1/cam.zoom;
+        ctx.beginPath(); ctx.moveTo(-500,0); ctx.lineTo(500,0); ctx.stroke();
+
+        // 畫胚料虛線
+        ctx.setLineDash([2, 2]); ctx.strokeStyle = '#444';
+        ctx.strokeRect(-150, -stockX/2, 150, stockX/2);
+        ctx.setLineDash([]);
+
+        // 畫成品輪廓
+        const mode = document.getElementById('mode').value;
+        ctx.strokeStyle = (mode === 'OD') ? '#38bdf8' : '#f87171';
+        ctx.lineWidth = 2/cam.zoom;
+        ctx.beginPath();
+        if(pts.length > 0) ctx.moveTo(pts[0].z, -pts[0].x/2);
+        pts.forEach((p, i) => {
+            if(p.r > 0 && i < pts.length-1) ctx.arcTo(p.z, -p.x/2, pts[i+1].z, -pts[i+1].x/2, p.r);
+            else ctx.lineTo(p.z, -p.x/2);
+        });
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    function zoomExtents() {
+        const stockX = parseFloat(document.getElementById('stockX').value) || 50;
+        cam.zoom = (cvs.height / 2 * 0.7) / (stockX / 2);
+        cam.x = cvs.width * 0.7; cam.y = cvs.height / 2;
+        update();
+    }
+
+    function generateNC() {
+        const pts = getPts();
+        if(pts.length === 0) return;
+        const mode = document.getElementById('mode').value;
+        const toolR = parseFloat(document.getElementById('toolR').value);
+        const stockX = parseFloat(document.getElementById('stockX').value);
+        const vc = document.getElementById('vc').value;
+
+        // 計算安全起始點
+        const safeX = mode === 'OD' ? (stockX + 2.0) : (pts[0].x - 2.0);
+        
+        let g = `% \nO8888 (CNC PRO FINAL);\n`;
+        g += `(MATERIAL Vc: ${vc})\n`;
+        g += `G21 G99 G40;\nT0101;\nG50 S2000;\nG96 S${vc} M03;\n`;
+        g += `G00 X${safeX.toFixed(3)} Z2.0 M08;\n\n`;
+
+        g += `G71 U${document.getElementById('cutU').value} R1.0;\n`;
+        g += `G71 P10 Q20 U${document.getElementById('finishU').value} W0.1 F0.2;\n`;
+        g += `N10 G00 X${pts[0].x.toFixed(3)};\n`;
+
+        pts.forEach((p, i) => {
+            let cx = p.x, cz = p.z;
+            if (i > 0 && toolR > 0) {
+                const angle = Math.atan2(Math.abs(pts[i].x - pts[i-1].x)/2, Math.abs(pts[i].z - pts[i-1].z));
+                const dir = mode === 'OD' ? 1 : -1;
+                cx += (2 * toolR * (1 - Math.cos(angle))) * dir;
+                cz += (toolR * Math.sin(angle));
+            }
+            g += `G01 X${cx.toFixed(3)} Z${cz.toFixed(3)}${p.r>0 ? ' R'+p.r : ''};\n`;
+        });
+        
+        g += `N20 X${safeX.toFixed(3)};\n(SAFE RETRACT)\n`;
+        g += `G01 X${(mode==='OD'?safeX+10:safeX-10).toFixed(3)} F1.0;\nG00 Z10.0 M09;\nM30;\n%`;
+        
+        document.getElementById('output').innerText = g;
+    }
+
+    function downloadNC() {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([document.getElementById('output').innerText], {type:'text/plain'}));
+        a.download = "lathe_program.nc"; a.click();
+    }
+
+    vbox.addEventListener('wheel', e => { cam.zoom *= (e.deltaY > 0 ? 0.9 : 1.1); update(); e.preventDefault(); }, {passive:false});
+    vbox.addEventListener('mousedown', e => { drag = true; lastM = {x:e.clientX, y:e.clientY}; });
+    window.addEventListener('mouseup', () => drag = false);
+    window.addEventListener('mousemove', e => { if(drag) { cam.x += (e.clientX - lastM.x); cam.y += (e.clientY - lastM.y); lastM = {x:e.clientX, y:e.clientY}; update(); } });
+
+    window.onload = () => { addPoint(0,0); addPoint(40,-30); zoomExtents(); };
+</script>
+</body>
+</html>
