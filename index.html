@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CNC 專業產生器 - 材料與安全補正版</title>
+    <title>CNC 專業產生器 - 終極彙整版</title>
     <style>
         :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --warning: #fbbf24; --text: #f1f5f9; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -42,37 +42,31 @@
 <body>
 
 <div class="sidebar">
-    <div class="header"><h3 style="margin:0;">CNC 專業產生器 - 材料與安全補正版</h3></div>
+    <div class="header"><h3 style="margin:0;">CNC 專業產生器 V7.0 (含刀片角度)</h3></div>
     
     <div class="config-grid">
-        <h4>1. 胚料與材料 (Stock & Material)</h4>
-        <div>
-            <label>胚料直徑 (Stock X)</label>
-            <input type="number" id="stockX" value="50" oninput="update()">
-        </div>
+        <h4>1. 胚料與材料</h4>
+        <div><label>胚料直徑 (Stock X)</label><input type="number" id="stockX" value="50" oninput="update()"></div>
         <div>
             <label>加工材料</label>
             <select id="material" onchange="applyMaterial()">
                 <option value="250">鋁合金 (Vc: 250)</option>
-                <option value="180">中碳鋼 S45C (Vc: 180)</option>
+                <option value="180" selected>中碳鋼 S45C (Vc: 180)</option>
                 <option value="120">不鏽鋼 SUS304 (Vc: 120)</option>
                 <option value="80">合金鋼 SCM440 (Vc: 80)</option>
-                <option value="200">黃銅 (Vc: 200)</option>
             </select>
         </div>
 
-        <h4>2. 刀具與轉速 (Tool & Speed)</h4>
+        <h4>2. 刀具參數 (含角度)</h4>
+        <div><label>刀尖半徑 Tool R</label><input type="number" id="toolR" value="0.4" step="0.4" oninput="update()"></div>
         <div>
-            <label>切削速度 Vc (m/min)</label>
-            <input type="number" id="vc" value="180" oninput="update()">
-        </div>
-        <div>
-            <label>建議轉速 S (RPM)</label>
-            <input type="text" id="calcS" readonly style="color:var(--warning); border:none; background:transparent; font-weight:bold;">
-        </div>
-        <div>
-            <label>刀尖半徑 Tool R</label>
-            <input type="number" id="toolR" value="0.4" step="0.4" oninput="update()">
+            <label>刀片角度 (Insert Angle)</label>
+            <select id="insAngle" onchange="update()">
+                <option value="80">C 型 (80°)</option>
+                <option value="55">D 型 (55°)</option>
+                <option value="35">V 型 (35°)</option>
+                <option value="60">T 型 (60°)</option>
+            </select>
         </div>
         <div>
             <label>加工模式</label>
@@ -81,6 +75,7 @@
                 <option value="ID">內徑 (ID)</option>
             </select>
         </div>
+        <div><label>建議轉速 S (RPM)</label><input type="text" id="calcS" readonly style="color:var(--warning); border:none; background:transparent; font-weight:bold;"></div>
 
         <h4>3. G71 循環設定</h4>
         <div><label>切深 U (單邊)</label><input type="number" id="cutU" value="2.0"></div>
@@ -92,7 +87,7 @@
     <button class="btn btn-add" onclick="addPoint()">+ 新增輪廓座標</button>
 
     <div class="footer">
-        <pre id="output">尚未產生 G-Code...</pre>
+        <pre id="output">點擊產生 G-Code...</pre>
         <button class="btn btn-gen" onclick="generateNC()">產生安全 G71 程式碼</button>
     </div>
 </div>
@@ -113,7 +108,6 @@
     let drag = false, lastM = { x: 0, y: 0 };
 
     function applyMaterial() {
-        document.getElementById('vc').value = document.getElementById('material').value;
         update();
     }
 
@@ -144,9 +138,8 @@
         
         const pts = getPts();
         const stockX = parseFloat(document.getElementById('stockX').value) || 0;
-        const vc = parseFloat(document.getElementById('vc').value);
+        const vc = parseFloat(document.getElementById('material').value);
 
-        // 計算轉速 S = (Vc * 1000) / (PI * D)
         const maxD = Math.max(...pts.map(p => p.x), stockX, 1);
         const rpm = Math.round((vc * 1000) / (Math.PI * maxD));
         document.getElementById('calcS').value = rpm + " RPM";
@@ -155,16 +148,13 @@
         ctx.translate(cam.x, cam.y);
         ctx.scale(cam.zoom, cam.zoom);
 
-        // 畫中心線
         ctx.strokeStyle = '#222'; ctx.lineWidth = 1/cam.zoom;
         ctx.beginPath(); ctx.moveTo(-500,0); ctx.lineTo(500,0); ctx.stroke();
 
-        // 畫胚料虛線
         ctx.setLineDash([2, 2]); ctx.strokeStyle = '#444';
         ctx.strokeRect(-150, -stockX/2, 150, stockX/2);
         ctx.setLineDash([]);
 
-        // 畫成品輪廓
         const mode = document.getElementById('mode').value;
         ctx.strokeStyle = (mode === 'OD') ? '#38bdf8' : '#f87171';
         ctx.lineWidth = 2/cam.zoom;
@@ -192,13 +182,13 @@
         const mode = document.getElementById('mode').value;
         const toolR = parseFloat(document.getElementById('toolR').value);
         const stockX = parseFloat(document.getElementById('stockX').value);
-        const vc = document.getElementById('vc').value;
+        const insAngle = parseFloat(document.getElementById('insAngle').value);
+        const vc = document.getElementById('material').value;
 
-        // 計算安全起始點
         const safeX = mode === 'OD' ? (stockX + 2.0) : (pts[0].x - 2.0);
         
-        let g = `% \nO8888 (CNC PRO FINAL);\n`;
-        g += `(MATERIAL Vc: ${vc})\n`;
+        let g = `% \nO7007 (G71 WITH INSERT ANGLE);\n`;
+        g += `(INSERT: ${insAngle} DEG, TOOL R: ${toolR})\n`;
         g += `G21 G99 G40;\nT0101;\nG50 S2000;\nG96 S${vc} M03;\n`;
         g += `G00 X${safeX.toFixed(3)} Z2.0 M08;\n\n`;
 
@@ -209,10 +199,18 @@
         pts.forEach((p, i) => {
             let cx = p.x, cz = p.z;
             if (i > 0 && toolR > 0) {
-                const angle = Math.atan2(Math.abs(pts[i].x - pts[i-1].x)/2, Math.abs(pts[i].z - pts[i-1].z));
-                const dir = mode === 'OD' ? 1 : -1;
-                cx += (2 * toolR * (1 - Math.cos(angle))) * dir;
-                cz += (toolR * Math.sin(angle));
+                const dx = (pts[i].x - pts[i-1].x) / 2;
+                const dz = pts[i].z - pts[i-1].z;
+                if (dx !== 0 && dz !== 0) {
+                    const slopeAngle = Math.atan2(Math.abs(dx), Math.abs(dz));
+                    const clearanceAngle = (180 - insAngle) / 2;
+                    if ((slopeAngle * 180 / Math.PI) > (clearanceAngle - 3)) {
+                        g += `(WARNING: SLOPE ${ (slopeAngle * 180 / Math.PI).toFixed(1) } DEG EXCEEDS CLEARANCE!)\n`;
+                    }
+                    const dir = mode === 'OD' ? 1 : -1;
+                    cx += (2 * toolR * (1 - Math.cos(slopeAngle))) * dir;
+                    cz += (toolR * Math.sin(slopeAngle));
+                }
             }
             g += `G01 X${cx.toFixed(3)} Z${cz.toFixed(3)}${p.r>0 ? ' R'+p.r : ''};\n`;
         });
@@ -226,7 +224,7 @@
     function downloadNC() {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([document.getElementById('output').innerText], {type:'text/plain'}));
-        a.download = "lathe_program.nc"; a.click();
+        a.download = "program.nc"; a.click();
     }
 
     vbox.addEventListener('wheel', e => { cam.zoom *= (e.deltaY > 0 ? 0.9 : 1.1); update(); e.preventDefault(); }, {passive:false});
