@@ -3,100 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CNC 專業產生器 - 終極彙整版</title>
+    <title>CNC 專業產生器 V8.0 - 內徑優化與標註版</title>
     <style>
-        :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --warning: #fbbf24; --text: #f1f5f9; }
+        :root { --bg: #f8fafc; --panel: #ffffff; --accent: #2563eb; --red: #dc2626; --text: #1e293b; --border: #cbd5e1; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
         @media (max-width: 950px) {
             body { flex-direction: column; overflow-y: auto; height: auto; }
             .sidebar { width: 100% !important; height: auto !important; border-right: none !important; }
-            .viewport { height: 350px !important; flex: none !important; }
+            .viewport { height: 400px !important; flex: none !important; border-bottom: 2px solid var(--border); }
         }
 
-        .sidebar { width: 500px; background: var(--panel); border-right: 1px solid #334155; display: flex; flex-direction: column; flex-shrink: 0; }
-        .header { padding: 15px; background: #0f172a; border-bottom: 2px solid var(--accent); }
-        .config-grid { padding: 12px; background: #334155; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-bottom: 1px solid #475569; }
-        .config-grid h4 { grid-column: span 2; margin: 4px 0; font-size: 11px; color: var(--warning); text-transform: uppercase; }
+        .sidebar { width: 450px; background: var(--panel); border-right: 2px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+        .header { padding: 15px; background: var(--accent); color: white; }
+        
+        .config-grid { padding: 12px; background: #f1f5f9; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-bottom: 1px solid var(--border); }
+        .config-grid h4 { grid-column: span 2; margin: 4px 0; font-size: 11px; color: #64748b; text-transform: uppercase; }
 
-        .scroll-area { flex: 1; padding: 12px; overflow-y: auto; background: #1e293b; }
-        .point-item { background: #0f172a; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr 1fr 35px; gap: 6px; border: 1px solid #334155; }
+        .scroll-area { flex: 1; padding: 12px; overflow-y: auto; }
+        .point-item { background: #fff; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr 1fr 35px; gap: 6px; border: 1px solid var(--border); }
         
-        label { font-size: 10px; color: #94a3b8; margin-bottom: 2px; display: block; }
-        input, select { background: #1e293b; border: 1px solid #475569; color: #fff; padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 14px; }
+        label { font-size: 10px; color: #64748b; margin-bottom: 2px; display: block; }
+        input, select { background: #fff; border: 1px solid var(--border); color: #000; padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 14px; }
         
-        .viewport { flex: 1; position: relative; background: #000; overflow: hidden; }
+        .viewport { flex: 1; position: relative; background: #ffffff; overflow: hidden; }
         canvas { width: 100%; height: 100%; touch-action: none; }
         
-        .footer { padding: 15px; background: #0f172a; border-top: 1px solid #334155; }
-        pre { background: #000; color: #a5d6ff; padding: 10px; border-radius: 6px; height: 130px; overflow: auto; font-family: 'Consolas', monospace; font-size: 12px; border: 1px solid #334155; }
+        .footer { padding: 15px; background: #f1f5f9; border-top: 1px solid var(--border); }
+        pre { background: #1e293b; color: #f8fafc; padding: 10px; border-radius: 6px; height: 120px; overflow: auto; font-family: 'Consolas', monospace; font-size: 12px; }
         
-        .btn { padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-add { background: #475569; color: white; margin: 0 15px 10px; width: calc(100% - 30px); }
-        .btn-gen { background: var(--accent); color: #0f172a; width: 100%; font-size: 15px; }
-        
+        .btn { padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+        .btn-gen { background: var(--accent); color: white; }
         .canvas-ui { position: absolute; bottom: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; }
-        .btn-ui { background: rgba(0,0,0,0.6); color: var(--accent); border: 1px solid var(--accent); padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; backdrop-filter: blur(4px); }
+        .btn-ui { background: white; color: var(--accent); border: 1px solid var(--accent); padding: 8px 12px; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <div class="header"><h3 style="margin:0;">CNC 專業產生器 V7.0 (含刀片角度)</h3></div>
+    <div class="header"><h3 style="margin:0;">CNC 產生器 V8.0</h3></div>
     
     <div class="config-grid">
-        <h4>1. 胚料與材料</h4>
-        <div><label>胚料直徑 (Stock X)</label><input type="number" id="stockX" value="50" oninput="update()"></div>
-        <div>
-            <label>加工材料</label>
-            <select id="material" onchange="applyMaterial()">
-                <option value="250">鋁合金 (Vc: 250)</option>
-                <option value="180" selected>中碳鋼 S45C (Vc: 180)</option>
-                <option value="120">不鏽鋼 SUS304 (Vc: 120)</option>
-                <option value="80">合金鋼 SCM440 (Vc: 80)</option>
-            </select>
-        </div>
+        <h4>1. 胚料與內孔 (Stock)</h4>
+        <div><label>胚料直徑 (Stock X)</label><input type="number" id="stockX" value="60" oninput="update()"></div>
+        <div><label>預鑽孔徑 (Pre-hole X)</label><input type="number" id="holeX" value="20" oninput="update()"></div>
 
-        <h4>2. 刀具參數 (含角度)</h4>
-        <div><label>刀尖半徑 Tool R</label><input type="number" id="toolR" value="0.4" step="0.4" oninput="update()"></div>
-        <div>
-            <label>刀片角度 (Insert Angle)</label>
-            <select id="insAngle" onchange="update()">
-                <option value="80">C 型 (80°)</option>
-                <option value="55">D 型 (55°)</option>
-                <option value="35">V 型 (35°)</option>
-                <option value="60">T 型 (60°)</option>
-            </select>
-        </div>
-        <div>
-            <label>加工模式</label>
+        <h4>2. 模式與刀具</h4>
+        <div><label>加工模式</label>
             <select id="mode" onchange="update()">
-                <option value="OD">外徑 (OD)</option>
-                <option value="ID">內徑 (ID)</option>
+                <option value="OD">外徑加工 (OD)</option>
+                <option value="ID">內徑加工 (ID)</option>
             </select>
         </div>
-        <div><label>建議轉速 S (RPM)</label><input type="text" id="calcS" readonly style="color:var(--warning); border:none; background:transparent; font-weight:bold;"></div>
-
-        <h4>3. G71 循環設定</h4>
-        <div><label>切深 U (單邊)</label><input type="number" id="cutU" value="2.0"></div>
-        <div><label>精修預留 U</label><input type="number" id="finishU" value="0.4"></div>
+        <div><label>刀尖半徑 Tool R</label><input type="number" id="toolR" value="0.4" step="0.4" oninput="update()"></div>
+        <div><label>刀片角度</label>
+            <select id="insAngle" onchange="update()">
+                <option value="80">C (80°)</option>
+                <option value="55">D (55°)</option>
+                <option value="35">V (35°)</option>
+            </select>
+        </div>
+        <div><label>單次切深 U</label><input type="number" id="cutU" value="2.0" oninput="update()"></div>
     </div>
 
-    <div class="scroll-area" id="point-list"></div>
-    
-    <button class="btn btn-add" onclick="addPoint()">+ 新增輪廓座標</button>
+    <div class="scroll-area" id="list"></div>
+    <button class="btn" style="background:var(--border); color:var(--text); margin: 0 15px 10px; width: calc(100% - 30px);" onclick="addPoint()">+ 新增點位</button>
 
     <div class="footer">
-        <pre id="output">點擊產生 G-Code...</pre>
-        <button class="btn btn-gen" onclick="generateNC()">產生安全 G71 程式碼</button>
+        <pre id="output">G-Code 將顯示在此...</pre>
+        <button class="btn btn-gen" onclick="generateNC()">產生 G71 程式碼</button>
     </div>
 </div>
 
 <div class="viewport" id="vbox">
     <canvas id="cvs"></canvas>
     <div class="canvas-ui">
-        <button class="btn-ui" onclick="zoomExtents()">▣ 自動視角</button>
-        <button class="btn-ui" onclick="downloadNC()">💾 下載 .NC</button>
+        <button class="btn-ui" onclick="zoomExtents()">▣ 全自動視角</button>
+        <button class="btn-ui" onclick="downloadNC()">💾 下載程式</button>
     </div>
 </div>
 
@@ -104,23 +87,20 @@
     const cvs = document.getElementById('cvs');
     const ctx = cvs.getContext('2d');
     const vbox = document.getElementById('vbox');
-    let cam = { x: 50, y: 0, zoom: 4.5 };
+    let cam = { x: 50, y: 0, zoom: 4.0 };
     let drag = false, lastM = { x: 0, y: 0 };
-
-    function applyMaterial() {
-        update();
-    }
+    let initialDist = 0, initialZoom = 4.0;
 
     function addPoint(x=40, z=-20) {
         const div = document.createElement('div');
         div.className = 'point-item';
         div.innerHTML = `
-            <div><label>X (直徑)</label><input type="number" class="val-x" value="${x}" oninput="update()"></div>
-            <div><label>Z (長度)</label><input type="number" class="val-z" value="${z}" oninput="update()"></div>
-            <div><label>R (圓角)</label><input type="number" class="val-r" value="0" oninput="update()"></div>
-            <button onclick="this.parentElement.remove(); update()" style="background:none; border:none; color:#f87171; font-size:22px; cursor:pointer;">×</button>
+            <div><label>X (Dia)</label><input type="number" class="val-x" value="${x}" oninput="update()"></div>
+            <div><label>Z (Len)</label><input type="number" class="val-z" value="${z}" oninput="update()"></div>
+            <div><label>R (Corner)</label><input type="number" class="val-r" value="0" oninput="update()"></div>
+            <button onclick="this.parentElement.remove(); update()" style="background:none; border:none; color:var(--red); font-size:24px; cursor:pointer;">×</button>
         `;
-        document.getElementById('point-list').appendChild(div);
+        document.getElementById('list').appendChild(div);
         update();
     }
 
@@ -135,29 +115,27 @@
     function update() {
         cvs.width = vbox.clientWidth; cvs.height = vbox.clientHeight;
         if(cam.y === 0) cam.y = cvs.height / 2;
-        
         const pts = getPts();
-        const stockX = parseFloat(document.getElementById('stockX').value) || 0;
-        const vc = parseFloat(document.getElementById('material').value);
+        const mode = document.getElementById('mode').value;
+        const stockX = parseFloat(document.getElementById('stockX').value);
+        const holeX = parseFloat(document.getElementById('holeX').value);
 
-        const maxD = Math.max(...pts.map(p => p.x), stockX, 1);
-        const rpm = Math.round((vc * 1000) / (Math.PI * maxD));
-        document.getElementById('calcS').value = rpm + " RPM";
-
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
         ctx.save();
         ctx.translate(cam.x, cam.y);
         ctx.scale(cam.zoom, cam.zoom);
 
-        ctx.strokeStyle = '#222'; ctx.lineWidth = 1/cam.zoom;
-        ctx.beginPath(); ctx.moveTo(-500,0); ctx.lineTo(500,0); ctx.stroke();
+        // 畫中心線 (黑細虛線)
+        ctx.setLineDash([5, 5]); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1/cam.zoom;
+        ctx.beginPath(); ctx.moveTo(-500, 0); ctx.lineTo(500, 0); ctx.stroke(); ctx.setLineDash([]);
 
-        ctx.setLineDash([2, 2]); ctx.strokeStyle = '#444';
-        ctx.strokeRect(-150, -stockX/2, 150, stockX/2);
-        ctx.setLineDash([]);
+        // 畫胚料範圍 (淡灰色)
+        ctx.fillStyle = "#f1f5f9";
+        if(mode === 'OD') ctx.fillRect(-200, -stockX/2, 200, stockX/2);
+        else ctx.fillRect(-200, -stockX/2, 200, (stockX-holeX)/2 + holeX/2);
 
-        const mode = document.getElementById('mode').value;
-        ctx.strokeStyle = (mode === 'OD') ? '#38bdf8' : '#f87171';
-        ctx.lineWidth = 2/cam.zoom;
+        // 繪製輪廓 (黑線)
+        ctx.strokeStyle = '#000000'; ctx.lineWidth = 2/cam.zoom;
         ctx.beginPath();
         if(pts.length > 0) ctx.moveTo(pts[0].z, -pts[0].x/2);
         pts.forEach((p, i) => {
@@ -166,73 +144,80 @@
         });
         ctx.stroke();
 
+        // 尺寸標註 (紅色)
+        ctx.fillStyle = 'var(--red)'; ctx.font = `${12/cam.zoom}px Arial`;
+        pts.forEach(p => {
+            ctx.beginPath(); ctx.arc(p.z, -p.x/2, 3/cam.zoom, 0, Math.PI*2); ctx.fill();
+            ctx.fillText(`X${p.x} Z${p.z}`, p.z + 2/cam.zoom, -p.x/2 - 2/cam.zoom);
+        });
+
         ctx.restore();
     }
 
+    // 手機觸控支援：雙指縮放與單指平移
+    vbox.addEventListener('touchstart', e => {
+        if(e.touches.length === 1) {
+            drag = true; lastM = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if(e.touches.length === 2) {
+            initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            initialZoom = cam.zoom;
+        }
+    });
+
+    vbox.addEventListener('touchmove', e => {
+        if(e.touches.length === 1 && drag) {
+            cam.x += (e.touches[0].clientX - lastM.x); cam.y += (e.touches[0].clientY - lastM.y);
+            lastM = { x: e.touches[0].clientX, y: e.touches[0].clientY }; update();
+        } else if(e.touches.length === 2) {
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            cam.zoom = initialZoom * (dist / initialDist); update();
+        }
+        e.preventDefault();
+    }, {passive: false});
+
+    window.addEventListener('touchend', () => drag = false);
+
+    // 滑鼠事件
+    vbox.addEventListener('wheel', e => { cam.zoom *= (e.deltaY > 0 ? 0.9 : 1.1); update(); e.preventDefault(); }, {passive:false});
+    vbox.addEventListener('mousedown', e => { drag = true; lastM = {x:e.clientX, y:e.clientY}; });
+    window.addEventListener('mouseup', () => drag = false);
+    window.addEventListener('mousemove', e => { if(drag) { cam.x += (e.clientX - lastM.x); cam.y += (e.clientY - lastM.y); lastM = {x:e.clientX, y:e.clientY}; update(); } });
+
     function zoomExtents() {
-        const stockX = parseFloat(document.getElementById('stockX').value) || 50;
-        cam.zoom = (cvs.height / 2 * 0.7) / (stockX / 2);
+        const stockX = parseFloat(document.getElementById('stockX').value);
+        cam.zoom = (cvs.height / 2 * 0.6) / (stockX / 2);
         cam.x = cvs.width * 0.7; cam.y = cvs.height / 2;
         update();
     }
 
     function generateNC() {
         const pts = getPts();
-        if(pts.length === 0) return;
         const mode = document.getElementById('mode').value;
-        const toolR = parseFloat(document.getElementById('toolR').value);
+        const holeX = parseFloat(document.getElementById('holeX').value);
         const stockX = parseFloat(document.getElementById('stockX').value);
-        const insAngle = parseFloat(document.getElementById('insAngle').value);
-        const vc = document.getElementById('material').value;
-
-        const safeX = mode === 'OD' ? (stockX + 2.0) : (pts[0].x - 2.0);
+        const toolR = parseFloat(document.getElementById('toolR').value);
         
-        let g = `% \nO7007 (G71 WITH INSERT ANGLE);\n`;
-        g += `(INSERT: ${insAngle} DEG, TOOL R: ${toolR})\n`;
-        g += `G21 G99 G40;\nT0101;\nG50 S2000;\nG96 S${vc} M03;\n`;
-        g += `G00 X${safeX.toFixed(3)} Z2.0 M08;\n\n`;
-
+        const safeX = mode === 'OD' ? (stockX + 2) : (holeX - 2);
+        let g = `% \nO8000 (V8.0 BORE OPTIMIZED);\n`;
+        g += `G21 G99 G40;\nT0101;\nG50 S2000;\nG96 S180 M03;\n`;
+        g += `G00 X${safeX.toFixed(3)} Z2.0 M08;\n`;
         g += `G71 U${document.getElementById('cutU').value} R1.0;\n`;
-        g += `G71 P10 Q20 U${document.getElementById('finishU').value} W0.1 F0.2;\n`;
+        g += `G71 P10 Q20 U0.4 W0.1 F0.2;\n`;
         g += `N10 G00 X${pts[0].x.toFixed(3)};\n`;
-
         pts.forEach((p, i) => {
             let cx = p.x, cz = p.z;
             if (i > 0 && toolR > 0) {
-                const dx = (pts[i].x - pts[i-1].x) / 2;
-                const dz = pts[i].z - pts[i-1].z;
-                if (dx !== 0 && dz !== 0) {
-                    const slopeAngle = Math.atan2(Math.abs(dx), Math.abs(dz));
-                    const clearanceAngle = (180 - insAngle) / 2;
-                    if ((slopeAngle * 180 / Math.PI) > (clearanceAngle - 3)) {
-                        g += `(WARNING: SLOPE ${ (slopeAngle * 180 / Math.PI).toFixed(1) } DEG EXCEEDS CLEARANCE!)\n`;
-                    }
-                    const dir = mode === 'OD' ? 1 : -1;
-                    cx += (2 * toolR * (1 - Math.cos(slopeAngle))) * dir;
-                    cz += (toolR * Math.sin(slopeAngle));
-                }
+                const angle = Math.atan2(Math.abs(pts[i].x - pts[i-1].x)/2, Math.abs(pts[i].z - pts[i-1].z));
+                cx += (2 * toolR * (1 - Math.cos(angle))) * (mode==='OD'?1:-1);
+                cz += (toolR * Math.sin(angle));
             }
-            g += `G01 X${cx.toFixed(3)} Z${cz.toFixed(3)}${p.r>0 ? ' R'+p.r : ''};\n`;
+            g += `G01 X${cx.toFixed(3)} Z${cz.toFixed(3)}${p.r>0?' R'+p.r:''};\n`;
         });
-        
-        g += `N20 X${safeX.toFixed(3)};\n(SAFE RETRACT)\n`;
-        g += `G01 X${(mode==='OD'?safeX+10:safeX-10).toFixed(3)} F1.0;\nG00 Z10.0 M09;\nM30;\n%`;
-        
+        g += `N20 X${safeX.toFixed(3)};\nM30;\n%`;
         document.getElementById('output').innerText = g;
     }
 
-    function downloadNC() {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([document.getElementById('output').innerText], {type:'text/plain'}));
-        a.download = "program.nc"; a.click();
-    }
-
-    vbox.addEventListener('wheel', e => { cam.zoom *= (e.deltaY > 0 ? 0.9 : 1.1); update(); e.preventDefault(); }, {passive:false});
-    vbox.addEventListener('mousedown', e => { drag = true; lastM = {x:e.clientX, y:e.clientY}; });
-    window.addEventListener('mouseup', () => drag = false);
-    window.addEventListener('mousemove', e => { if(drag) { cam.x += (e.clientX - lastM.x); cam.y += (e.clientY - lastM.y); lastM = {x:e.clientX, y:e.clientY}; update(); } });
-
-    window.onload = () => { addPoint(0,0); addPoint(40,-30); zoomExtents(); };
+    window.onload = () => { addPoint(30,0); addPoint(45,-25); zoomExtents(); };
 </script>
 </body>
 </html>
