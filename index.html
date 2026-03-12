@@ -3,221 +3,707 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CNC 專業產生器 V8.0 - 內徑優化與標註版</title>
+    <title>Gemini CNC 專業 CAD/CAM V37.0</title>
     <style>
-        :root { --bg: #f8fafc; --panel: #ffffff; --accent: #2563eb; --red: #dc2626; --text: #1e293b; --border: #cbd5e1; }
+        :root { --bg: #f8fafc; --panel: #ffffff; --accent: #2563eb; --red: #dc2626; --green: #16a34a; --purple: #8b5cf6; --text: #1e293b; --border: #cbd5e1; --cad-black: #0f172a; --gold: #b45309; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
         @media (max-width: 950px) {
-            body { flex-direction: column; overflow-y: auto; height: auto; }
-            .sidebar { width: 100% !important; height: auto !important; border-right: none !important; }
-            .viewport { height: 400px !important; flex: none !important; border-bottom: 2px solid var(--border); }
+            body { flex-direction: column; height: auto; overflow-y: auto; }
+            .sidebar { width: 100% !important; border-right: none !important; }
+            .viewport { height: 450px !important; flex: none !important; }
+            .cad-toolbar { flex-direction: row !important; flex-wrap: wrap; justify-content: center; background: rgba(255,255,255,0.9); padding: 5px; width: 100%; top: 0 !important; right: 0 !important; border-bottom: 1px solid var(--border); }
         }
 
-        .sidebar { width: 450px; background: var(--panel); border-right: 2px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
-        .header { padding: 15px; background: var(--accent); color: white; }
-        
-        .config-grid { padding: 12px; background: #f1f5f9; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-bottom: 1px solid var(--border); }
-        .config-grid h4 { grid-column: span 2; margin: 4px 0; font-size: 11px; color: #64748b; text-transform: uppercase; }
+        .sidebar { width: 480px; background: var(--panel); border-right: 2px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; z-index: 100; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
+        .config-header { padding: 15px; background: var(--cad-black); color: #38bdf8; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .param-section { padding: 10px; background: #f1f5f9; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-bottom: 2px solid var(--border); }
+        .param-section h4 { grid-column: span 2; margin: 0 0 4px 0; font-size: 11px; color: var(--gold); text-transform: uppercase; border-left: 3px solid var(--gold); padding-left: 8px; }
 
-        .scroll-area { flex: 1; padding: 12px; overflow-y: auto; }
-        .point-item { background: #fff; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr 1fr 35px; gap: 6px; border: 1px solid var(--border); }
+        .scroll-area { flex: 1; padding: 10px; overflow-y: auto; }
+        .point-item { background: #fff; padding: 8px; margin-bottom: 8px; border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr 1.2fr 0.8fr 30px; gap: 5px; border: 1px solid var(--border); font-size: 11px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .point-item.rapid-move { border-left: 4px solid var(--gold); background: #fffbeb; }
         
-        label { font-size: 10px; color: #64748b; margin-bottom: 2px; display: block; }
-        input, select { background: #fff; border: 1px solid var(--border); color: #000; padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 14px; }
+        label { font-size: 10px; color: #64748b; margin-bottom: 2px; display: block; font-weight: bold; }
+        input, select { border: 1px solid var(--border); padding: 5px; border-radius: 4px; width: 100%; font-size: 13px; box-sizing: border-box; }
+
+        .viewport { flex: 1; position: relative; background: #ffffff; overflow: hidden; cursor: crosshair; }
+        canvas { width: 100%; height: 100%; touch-action: none; outline: none; }
         
-        .viewport { flex: 1; position: relative; background: #ffffff; overflow: hidden; }
-        canvas { width: 100%; height: 100%; touch-action: none; }
+        .cad-toolbar { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 100; }
+        .tool-btn { background: white; border: 2px solid var(--accent); color: var(--accent); padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tool-btn.active { background: var(--accent); color: white; }
+        .tool-btn.danger { border-color: var(--red); color: var(--red); }
+        .tool-btn.toggle-on { background: var(--green); color: white; border-color: var(--green); }
+        .tool-btn.dim-mode { border-color: var(--purple); color: var(--purple); }
+        .tool-btn.dim-mode.active { background: var(--purple); color: white; }
+        .tool-btn.break-btn { border-color: var(--gold); color: var(--gold); border-style: dashed; }
+        .tool-btn.break-btn:active { background: var(--gold); color: white; }
+
+        .smart-editor { position: absolute; display: none; background: white; border: 2px solid var(--purple); padding: 12px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.25); z-index: 200; transform: translate(-50%, -100%); margin-top: -15px; width: 180px; }
+        .smart-editor input, .smart-editor select { margin-bottom: 8px; font-weight: bold; border: 1px solid var(--purple); }
+        .smart-title { font-size: 12px; font-weight: bold; color: var(--purple); margin-bottom: 8px; text-align: center; border-bottom: 1px solid var(--purple); padding-bottom: 4px; }
+        .editor-btns { display: flex; gap: 5px; }
+        .explode-btn { width: 100%; padding: 6px; margin-top: 8px; background: var(--gold); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; }
+
+        .info-overlay { position: absolute; bottom: 15px; left: 15px; background: rgba(15, 23, 42, 0.85); padding: 10px 15px; border-radius: 6px; border: 1px solid #38bdf8; font-size: 14px; font-family: monospace; font-weight: bold; color: #4ade80; pointer-events: none; z-index: 50; }
         
-        .footer { padding: 15px; background: #f1f5f9; border-top: 1px solid var(--border); }
-        pre { background: #1e293b; color: #f8fafc; padding: 10px; border-radius: 6px; height: 120px; overflow: auto; font-family: 'Consolas', monospace; font-size: 12px; }
-        
-        .btn { padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
-        .btn-gen { background: var(--accent); color: white; }
-        .canvas-ui { position: absolute; bottom: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; }
-        .btn-ui { background: white; color: var(--accent); border: 1px solid var(--accent); padding: 8px 12px; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .footer { padding: 12px; background: var(--cad-black); color: white; display: flex; gap: 8px; }
+        .btn-gen { flex: 1; padding: 12px; background: #38bdf8; color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .btn-rough { background: var(--gold); color: white; }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <div class="header"><h3 style="margin:0;">CNC 產生器 V8.0</h3></div>
+    <div class="config-header">
+        <span>CNC V37.0 (DXF & 拍照版)</span>
+        <button onclick="saveProject()" style="background:none; border:1px solid #38bdf8; color:#38bdf8; border-radius:4px; padding:4px 10px; cursor:pointer;">💾 存檔</button>
+    </div>
     
-    <div class="config-grid">
-        <h4>1. 胚料與內孔 (Stock)</h4>
-        <div><label>胚料直徑 (Stock X)</label><input type="number" id="stockX" value="60" oninput="update()"></div>
-        <div><label>預鑽孔徑 (Pre-hole X)</label><input type="number" id="holeX" value="20" oninput="update()"></div>
+    <div class="param-section">
+        <h4>1. 材質與胚料</h4>
+        <div><label>工件材質</label><select id="mat" onchange="update()"><option value="250">鋁合金</option><option value="180" selected>碳鋼 S45C</option></select></div>
+        <div><label>加工模式</label><select id="mode" onchange="update()"><option value="OD">外徑 (OD)</option><option value="ID">內徑 (ID)</option></select></div>
+        <div><label>胚料外徑 (Stock X)</label><input type="number" id="stockX" value="60" oninput="update()"></div>
+        <div><label>端面預留 (Stock Z)</label><input type="number" id="stockZ" value="1.0" step="0.5" oninput="update()"></div>
+        <div><label>刀尖 R 角</label><input type="number" id="toolR" value="0.4" step="0.4" oninput="update()"></div>
+        <div><label>預鑽孔徑</label><input type="number" id="holeX" value="0" oninput="update()"></div>
 
-        <h4>2. 模式與刀具</h4>
-        <div><label>加工模式</label>
-            <select id="mode" onchange="update()">
-                <option value="OD">外徑加工 (OD)</option>
-                <option value="ID">內徑加工 (ID)</option>
-            </select>
+        <h4>2. 底圖 / DXF 匯入</h4>
+        <div style="grid-column: span 2; display: flex; gap: 5px;">
+            <input type="file" id="bg-upload" accept="image/*,.dxf" capture="environment" style="display:none;" onchange="loadBg(event)">
+            <button onclick="document.getElementById('bg-upload').click()" style="flex:1; padding:8px; background:var(--accent); color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">📁 載入 圖檔/DXF</button>
+            <button onclick="clearBg()" style="flex:1; padding:8px; background:var(--red); color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">🗑️ 清除底圖</button>
         </div>
-        <div><label>刀尖半徑 Tool R</label><input type="number" id="toolR" value="0.4" step="0.4" oninput="update()"></div>
-        <div><label>刀片角度</label>
-            <select id="insAngle" onchange="update()">
-                <option value="80">C (80°)</option>
-                <option value="55">D (55°)</option>
-                <option value="35">V (35°)</option>
-            </select>
-        </div>
-        <div><label>單次切深 U</label><input type="number" id="cutU" value="2.0" oninput="update()"></div>
+        <div><label>縮放比例 (對齊)</label><input type="number" id="bg-scale" value="1.0" step="0.1" oninput="updateBg()"></div>
+        <div><label>透明度</label><input type="range" id="bg-opacity" min="0.1" max="1.0" step="0.1" value="0.5" oninput="updateBg()"></div>
+        <div><label>偏移 Z (右)</label><input type="number" id="bg-z" value="0" step="5" oninput="updateBg()"></div>
+        <div><label>偏移 X (下)</label><input type="number" id="bg-x" value="0" step="5" oninput="updateBg()"></div>
     </div>
 
     <div class="scroll-area" id="list"></div>
-    <button class="btn" style="background:var(--border); color:var(--text); margin: 0 15px 10px; width: calc(100% - 30px);" onclick="addPoint()">+ 新增點位</button>
-
     <div class="footer">
-        <pre id="output">G-Code 將顯示在此...</pre>
-        <button class="btn btn-gen" onclick="generateNC()">產生 G71 程式碼</button>
+        <button class="btn-gen" onclick="generateNC('G01')">精車路徑 (G01)</button>
+        <button class="btn-gen btn-rough" onclick="generateNC('G71')">粗車循環 (G71)</button>
     </div>
 </div>
 
 <div class="viewport" id="vbox">
-    <canvas id="cvs"></canvas>
-    <div class="canvas-ui">
-        <button class="btn-ui" onclick="zoomExtents()">▣ 全自動視角</button>
-        <button class="btn-ui" onclick="downloadNC()">💾 下載程式</button>
+    <div class="cad-toolbar">
+        <button class="tool-btn active" id="btn-draw" onclick="setMode('DRAW')">1. 直線繪圖</button>
+        <button class="tool-btn break-btn" onclick="breakLine()">✂️ 結束線段 (斷開)</button>
+        <button class="tool-btn" id="btn-3p" onclick="setMode('3P_ARC')">2. 三點定弧</button>
+        <button class="tool-btn" id="btn-trim" onclick="setMode('TRIM')">3. 拖曳快剪</button>
+        <button class="tool-btn dim-mode" id="btn-dim" onclick="setMode('DIM')">4. 點擊標註編輯</button>
+        <button class="tool-btn" id="btn-ortho" onclick="toggleOrtho()">正交: 關</button>
+        <button class="tool-btn" onclick="zoomExtents()">▣ 自動視角</button>
+        <button class="tool-btn danger" onclick="clearAll()">全部清除</button>
     </div>
+    
+    <div class="info-overlay" id="status">X: 0.000<br>Z: 0.000</div>
+    
+    <div id="dim-editor" class="smart-editor">
+        <div id="dim-title" class="smart-title">標註編輯</div>
+        <div id="seg-inputs" style="display:none;">
+            <label>Z 向長度 (Length):</label><input type="number" id="seg-lenZ" step="0.1">
+            <label>目標直徑 (Target X):</label><input type="number" id="seg-targetX" step="0.1">
+        </div>
+        <div id="pt-inputs" style="display:none;">
+            <label>絕對座標 Z:</label><input type="number" id="pt-z" step="0.1">
+            <label>絕對直徑 X:</label><input type="number" id="pt-x" step="0.1">
+            <div style="display:flex; gap:5px;">
+                <div style="flex:1"><label>導角</label><select id="pt-type"><option value="R">圓角 R</option><option value="C">倒角 C</option></select></div>
+                <div style="flex:1"><label>數值</label><input type="number" id="pt-val" step="0.5"></div>
+            </div>
+            <button id="btn-explode" class="explode-btn" onclick="explodeCorner()">⚙️ 打散為實體斜線</button>
+        </div>
+        <div class="editor-btns" style="margin-top:8px;">
+            <button onclick="applyDimEdit()" style="flex:1; padding:6px; background:var(--purple); color:white; border:none; border-radius:4px; cursor:pointer;">套用</button>
+            <button onclick="closeEditor('dim-editor')" style="flex:1; padding:6px; background:#cbd5e1; color:#0f172a; border:none; border-radius:4px; cursor:pointer;">取消</button>
+        </div>
+    </div>
+    <canvas id="cvs"></canvas>
 </div>
 
 <script>
     const cvs = document.getElementById('cvs');
     const ctx = cvs.getContext('2d');
     const vbox = document.getElementById('vbox');
-    let cam = { x: 50, y: 0, zoom: 4.0 };
-    let drag = false, lastM = { x: 0, y: 0 };
-    let initialDist = 0, initialZoom = 4.0;
+    
+    let points = [];
+    let cam = { x: 0, y: 0, zoom: 6.0 };
+    let mode = 'DRAW'; 
+    let ortho = false;
+    let needBreak = false; 
+    let previewCoord = null; 
+    let snapTarget = null;
+    let ptr = { isDown: false, startX: 0, startY: 0, moved: false, lastX: 0, lastY: 0 };
+    let editIndex = -1; let editType = null; let slashPath = []; let arcTemp = [];
 
-    function addPoint(x=40, z=-20) {
-        const div = document.createElement('div');
-        div.className = 'point-item';
-        div.innerHTML = `
-            <div><label>X (Dia)</label><input type="number" class="val-x" value="${x}" oninput="update()"></div>
-            <div><label>Z (Len)</label><input type="number" class="val-z" value="${z}" oninput="update()"></div>
-            <div><label>R (Corner)</label><input type="number" class="val-r" value="0" oninput="update()"></div>
-            <button onclick="this.parentElement.remove(); update()" style="background:none; border:none; color:var(--red); font-size:24px; cursor:pointer;">×</button>
-        `;
-        document.getElementById('list').appendChild(div);
+    // --- 底圖與 DXF 變數 ---
+    let bgImg = new Image();
+    let bgLoaded = false;
+    let dxfEntities = []; // 儲存解析出來的 DXF 線條
+    let bgConfig = { z: 0, x: 0, scale: 1.0, opacity: 0.5 };
+
+    // --- 超輕量化 DXF ASCII 解析器 ---
+    function parseDXF(text) {
+        let lines = text.split(/\r\n|\n|\r/);
+        let entities = [];
+        let inEnt = false;
+        let current = null;
+        for (let i = 0; i < lines.length; i++) {
+            let c = lines[i].trim(), v = lines[++i] ? lines[i].trim() : "";
+            if (c === "0" && v === "SECTION") {
+                let nc = lines[i+1] ? lines[i+1].trim() : "";
+                let nv = lines[i+2] ? lines[i+2].trim() : "";
+                if (nc === "2" && nv === "ENTITIES") { inEnt = true; i += 2; continue; }
+            }
+            if (c === "0" && v === "ENDSEC" && inEnt) { inEnt = false; continue; }
+            
+            if (inEnt) {
+                if (c === "0") {
+                    if (current) entities.push(current);
+                    if (["LINE", "LWPOLYLINE", "POLYLINE"].includes(v)) current = { type: v, pts: [] };
+                    else current = null;
+                } else if (current) {
+                    if (current.type === "LINE") {
+                        if (c==="10") current.z1 = parseFloat(v);
+                        if (c==="20") current.x1 = parseFloat(v) * 2; // CAD Y 轉車床 X (直徑)
+                        if (c==="11") current.z2 = parseFloat(v);
+                        if (c==="21") current.x2 = parseFloat(v) * 2;
+                    }
+                    else if (current.type === "LWPOLYLINE" || current.type === "POLYLINE") {
+                        if (c==="10") current.pts.push({z: parseFloat(v), x: 0});
+                        if (c==="20" && current.pts.length>0) current.pts[current.pts.length-1].x = parseFloat(v) * 2;
+                    }
+                }
+            }
+        }
+        if (current) entities.push(current);
+        return entities;
+    }
+
+    function transformDxf(dxfZ, dxfX) {
+        return { z: (dxfZ * bgConfig.scale) + bgConfig.z, x: (dxfX * bgConfig.scale) + bgConfig.x };
+    }
+
+    function loadBg(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        
+        if (file.name.toLowerCase().endsWith('.dxf')) {
+            reader.onload = (evt) => {
+                bgLoaded = false;
+                dxfEntities = parseDXF(evt.target.result);
+                bgConfig.scale = 1.0; bgConfig.x = 0; bgConfig.z = 0;
+                document.getElementById('bg-scale').value = '1.0';
+                document.getElementById('bg-x').value = '0';
+                document.getElementById('bg-z').value = '0';
+                alert('✅ DXF 載入成功！滑鼠靠近藍色線條端點即可鎖點。');
+                update();
+            };
+            reader.readAsText(file);
+        } else {
+            reader.onload = (evt) => {
+                dxfEntities = []; 
+                bgImg.onload = () => {
+                    bgLoaded = true;
+                    bgConfig.scale = 100 / (bgImg.height || 100); 
+                    document.getElementById('bg-scale').value = bgConfig.scale.toFixed(3);
+                    update();
+                };
+                bgImg.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function updateBg() {
+        bgConfig.scale = parseFloat(document.getElementById('bg-scale').value) || 1.0;
+        bgConfig.opacity = parseFloat(document.getElementById('bg-opacity').value) || 0.5;
+        bgConfig.z = parseFloat(document.getElementById('bg-z').value) || 0;
+        bgConfig.x = parseFloat(document.getElementById('bg-x').value) || 0;
         update();
     }
 
-    function getPts() {
-        return Array.from(document.querySelectorAll('.point-item')).map(el => ({
-            x: parseFloat(el.querySelector('.val-x').value) || 0,
-            z: parseFloat(el.querySelector('.val-z').value) || 0,
-            r: parseFloat(el.querySelector('.val-r').value) || 0
-        }));
+    function clearBg() { bgLoaded = false; dxfEntities = []; document.getElementById('bg-upload').value = ''; update(); }
+
+    function setMode(m) {
+        mode = m; slashPath = []; arcTemp = [];
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        if(m === 'DRAW') document.getElementById('btn-draw').classList.add('active');
+        if(m === '3P_ARC') document.getElementById('btn-3p').classList.add('active');
+        if(m === 'TRIM') document.getElementById('btn-trim').classList.add('active');
+        if(m === 'DIM') document.getElementById('btn-dim').classList.add('active');
+        closeEditor('dim-editor'); update();
+    }
+
+    function breakLine() { needBreak = true; setMode('DRAW'); document.getElementById('status').innerHTML = `<span style="color:var(--gold)">✂️ 已斷開！請點擊建立新起點</span>`; previewCoord = null; update(); }
+    function toggleOrtho() { ortho = !ortho; document.getElementById('btn-ortho').innerText = ortho ? "正交: 開" : "正交: 關"; document.getElementById('btn-ortho').classList.toggle('toggle-on', ortho); }
+    function closeEditor(id) { document.getElementById(id).style.display = 'none'; editIndex = -1; editType = null; update(); }
+
+    function getCoord(clientX, clientY) {
+        const rect = cvs.getBoundingClientRect();
+        let z = (clientX - rect.left - cam.x) / cam.zoom;
+        let x = -(clientY - rect.top - cam.y) / cam.zoom * 2;
+        let snapped = false;
+        
+        // 1. 先鎖既有點位
+        for(let t of [{x:0, z:0}, ...points]) {
+            if(Math.hypot(z - t.z, x - t.x) < (10 / cam.zoom)) { z = t.z; x = t.x; snapped = true; break; }
+        }
+        
+        // 2. 如果沒鎖到，鎖 DXF 的端點
+        if (!snapped && dxfEntities.length > 0) {
+            for(let ent of dxfEntities) {
+                if (ent.type === 'LINE') {
+                    let p1 = transformDxf(ent.z1, ent.x1), p2 = transformDxf(ent.z2, ent.x2);
+                    if (Math.hypot(z - p1.z, x - p1.x) < (10 / cam.zoom)) { z=p1.z; x=p1.x; snapped=true; break; }
+                    if (Math.hypot(z - p2.z, x - p2.x) < (10 / cam.zoom)) { z=p2.z; x=p2.x; snapped=true; break; }
+                } else if (ent.type === 'LWPOLYLINE' || ent.type === 'POLYLINE') {
+                    for(let pt of ent.pts) {
+                        let p = transformDxf(pt.z, pt.x);
+                        if (Math.hypot(z - p.z, x - p.x) < (10 / cam.zoom)) { z=p.z; x=p.x; snapped=true; break; }
+                    }
+                    if(snapped) break;
+                }
+            }
+        }
+        
+        if (ortho && mode === 'DRAW' && points.length > 0 && !needBreak) {
+            const last = points[points.length-1];
+            if (Math.abs(z - last.z) > Math.abs(x - last.x)) x = last.x; else z = last.z;
+        }
+        return { x: Math.round(x*1000)/1000, z: Math.round(z*1000)/1000, snapped };
+    }
+
+    function getRawCoord(clientX, clientY) { return { z: (clientX - cvs.getBoundingClientRect().left - cam.x) / cam.zoom, x: -(clientY - cvs.getBoundingClientRect().top - cam.y) / cam.zoom * 2 }; }
+
+    function distToSegment(p, v, w) {
+        const l2 = Math.pow(v.z-w.z,2) + Math.pow(v.x/2-w.x/2,2);
+        if(l2===0) return Math.hypot(p.z-v.z, p.x/2-v.x/2);
+        let t = ((p.z-v.z)*(w.z-v.z) + (p.x/2-v.x/2)*(w.x/2-v.x/2))/l2;
+        t = Math.max(0, Math.min(1, t)); return Math.hypot(p.z-(v.z+t*(w.z-v.z)), p.x/2-(v.x/2+t*(w.x/2-v.x/2)));
+    }
+
+    function getIntersection(p1, p2, p3, p4) {
+        const s1_z = p2.z - p1.z, s1_x = p2.x/2 - p1.x/2;
+        const s2_z = p4.z - p3.z, s2_x = p4.x/2 - p3.x/2;
+        const div = -s2_z * s1_x + s1_z * s2_x;
+        if (Math.abs(div) < 0.001) return null;
+        const s = (-s1_x * (p1.z - p3.z) + s1_z * (p1.x/2 - p3.x/2)) / div;
+        const t = ( s2_z * (p1.x/2 - p3.x/2) - s2_x * (p1.z - p3.z)) / div;
+        if (s >= 0 && s <= 1 && t >= 0 && t <= 1) return { z: p1.z + (t * s1_z), x: (p1.x/2 + (t * s1_x)) * 2 };
+        return null;
+    }
+
+    function solveCircle(p1, p2, p3) {
+        const x1=p1.z, y1=p1.x/2, x2=p2.z, y2=p2.x/2, x3=p3.z, y3=p3.x/2;
+        const D = 2*(x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2));
+        if(Math.abs(D) < 0.01) return null;
+        return { r: Math.sqrt((x1-x2)**2 + (y1-y2)**2) };
+    }
+
+    function executeTrim(index, slashPt) {
+        let closestInt = null, minDist = Infinity;
+        for (let j = 1; j < points.length; j++) {
+            if (index === j) continue;
+            const intPt = getIntersection(points[index-1], points[index], points[j-1], points[j]);
+            if (intPt) {
+                const d1 = Math.hypot(intPt.z - points[index-1].z, intPt.x - points[index-1].x);
+                const d2 = Math.hypot(intPt.z - points[index].z, intPt.x - points[index].x);
+                if (d1 < 0.001 || d2 < 0.001) continue;
+                const d = Math.hypot(intPt.z - slashPt.z, intPt.x - slashPt.x);
+                if (d < minDist) { minDist = d; closestInt = intPt; }
+            }
+        }
+        if (closestInt) {
+            const distStart = Math.hypot(slashPt.z - points[index-1].z, slashPt.x - points[index-1].x);
+            const distEnd = Math.hypot(slashPt.z - points[index].z, slashPt.x - points[index].x);
+            if (distStart > distEnd) { points[index].z = closestInt.z; points[index].x = closestInt.x; } 
+            else { points[index-1].z = closestInt.z; points[index-1].x = closestInt.x; }
+        } else { points.splice(index, 1); }
+        renderList();
+    }
+
+    function onPointerDown(e) {
+        if(e.target !== cvs) return;
+        let clientX = e.clientX, clientY = e.clientY;
+        if(e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; }
+        ptr = { isDown: true, startX: clientX, startY: clientY, moved: false, lastX: clientX, lastY: clientY };
+        if(mode === 'TRIM') slashPath = [getRawCoord(clientX, clientY)];
+    }
+
+    function onPointerMove(e) {
+        if(e.target !== cvs && !ptr.isDown) return;
+        let clientX = e.clientX, clientY = e.clientY;
+        if(e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; }
+        const coord = getCoord(clientX, clientY);
+        snapTarget = coord; previewCoord = coord; 
+        
+        if(!needBreak) { document.getElementById('status').innerHTML = `X: <span style="color:white">${coord.x.toFixed(3)}</span><br>Z: <span style="color:white">${coord.z.toFixed(3)}</span>`; }
+
+        let isPanning = false;
+        if(e.touches && e.touches.length === 2) isPanning = true;
+        if(!e.touches && (e.buttons === 4 || e.buttons === 2)) isPanning = true;
+
+        if (ptr.isDown) {
+            if (Math.hypot(clientX - ptr.startX, clientY - ptr.startY) > 5) ptr.moved = true;
+            if(isPanning) { cam.x += (clientX - ptr.lastX); cam.y += (clientY - ptr.lastY); } 
+            else if (mode === 'TRIM' && ptr.moved) {
+                const currentRaw = getRawCoord(clientX, clientY);
+                if(slashPath.length === 0) slashPath.push(getRawCoord(ptr.startX, ptr.startY));
+                const lastRaw = slashPath[slashPath.length - 1];
+                slashPath.push(currentRaw);
+
+                for(let i=1; i<points.length; i++) {
+                    if(points[i].rapid) continue;
+                    const intPt = getIntersection(lastRaw, currentRaw, points[i-1], points[i]);
+                    if(intPt) { executeTrim(i, intPt); slashPath = [currentRaw]; break; }
+                }
+            }
+        }
+        ptr.lastX = clientX; ptr.lastY = clientY; update();
+    }
+
+    function onPointerUp(e) {
+        if (!ptr.isDown) return;
+        ptr.isDown = false;
+        if (mode === 'TRIM') { slashPath = []; update(); return; }
+
+        if (!ptr.moved) {
+            const coord = getCoord(ptr.startX, ptr.startY);
+            if (mode === 'DRAW') {
+                const isRapid = (points.length === 0 || needBreak);
+                points.push({ x: coord.x, z: coord.z, type:'R', val:0, rapid: isRapid });
+                needBreak = false; renderList();
+            }
+            else if (mode === '3P_ARC') {
+                arcTemp.push(coord);
+                if(arcTemp.length === 3) {
+                    const c = solveCircle(arcTemp[0], arcTemp[1], arcTemp[2]);
+                    if(c) {
+                        points.push({ x: arcTemp[1].x, z: arcTemp[1].z, type:'R', val: c.r, arc: true, rapid: false });
+                        points.push({ x: arcTemp[2].x, z: arcTemp[2].z, type:'R', val: 0, rapid: false });
+                    }
+                    arcTemp = []; renderList();
+                }
+            }
+            else if (mode === 'DIM') {
+                let hitIndex = -1; editType = null;
+                for(let i=0; i<points.length; i++) {
+                    if(Math.hypot(coord.z - points[i].z, coord.x - points[i].x) < (20/cam.zoom)) { hitIndex = i; editType = 'POINT'; break; }
+                }
+                if(hitIndex === -1) {
+                    for(let i=1; i<points.length; i++) {
+                        if(points[i].rapid) continue;
+                        if(distToSegment(coord, points[i-1], points[i]) < (15/cam.zoom)) { hitIndex = i; editType = 'SEGMENT'; break; }
+                    }
+                }
+
+                if(hitIndex !== -1) {
+                    editIndex = hitIndex;
+                    const ed = document.getElementById('dim-editor');
+                    if (editType === 'POINT') {
+                        document.getElementById('dim-title').innerText = `編輯轉折端點`;
+                        document.getElementById('seg-inputs').style.display = 'none';
+                        document.getElementById('pt-inputs').style.display = 'block';
+                        document.getElementById('pt-x').value = points[hitIndex].x;
+                        document.getElementById('pt-z').value = points[hitIndex].z;
+                        document.getElementById('pt-type').value = points[hitIndex].type || 'R';
+                        document.getElementById('pt-val').value = points[hitIndex].val || 0;
+                        
+                        let isRapidPoint = (hitIndex === 0 || points[hitIndex].rapid);
+                        document.getElementById('pt-type').disabled = isRapidPoint;
+                        document.getElementById('pt-val').disabled = isRapidPoint;
+                        document.getElementById('btn-explode').style.display = (!isRapidPoint && points[hitIndex].val > 0) ? 'block' : 'none';
+                    } 
+                    else if (editType === 'SEGMENT') {
+                        document.getElementById('dim-title').innerText = `編輯線段尺寸`;
+                        document.getElementById('pt-inputs').style.display = 'none';
+                        document.getElementById('seg-inputs').style.display = 'block';
+                        let p1 = points[hitIndex-1], p2 = points[hitIndex];
+                        document.getElementById('seg-lenZ').value = Math.abs(p2.z - p1.z).toFixed(3);
+                        document.getElementById('seg-targetX').value = p2.x.toFixed(3);
+                    }
+                    ed.style.left = ptr.startX + 'px'; ed.style.top = ptr.startY + 'px'; ed.style.display = 'block';
+                }
+            }
+        }
+        update();
+    }
+
+    function explodeCorner() {
+        if(editIndex <= 0 || editIndex >= points.length - 1) return;
+        let curr = points[editIndex], prev = points[editIndex-1], next = points[editIndex+1];
+        if (curr.rapid || next.rapid || curr.val === 0) return;
+        let v1z = curr.z - prev.z, v1x = curr.x/2 - prev.x/2; let len1 = Math.hypot(v1z, v1x);
+        let v2z = next.z - curr.z, v2x = next.x/2 - curr.x/2; let len2 = Math.hypot(v2z, v2x);
+        if(len1 === 0 || len2 === 0) return;
+        let p1 = { z: Math.round((curr.z - (v1z/len1)*curr.val)*1000)/1000, x: Math.round((curr.x/2 - (v1x/len1)*curr.val)*2*1000)/1000, type: 'R', val: 0, rapid: false };
+        let p2 = { z: Math.round((curr.z + (v2z/len2)*curr.val)*1000)/1000, x: Math.round((curr.x/2 + (v2x/len2)*curr.val)*2*1000)/1000, type: 'R', val: 0, rapid: false };
+        points.splice(editIndex, 1, p1, p2); closeEditor('dim-editor'); renderList(); update();
+    }
+
+    function applyDimEdit() {
+        if(editIndex < 0 || editIndex >= points.length) return;
+        let deltaZ = 0, deltaX = 0;
+        if (editType === 'POINT') {
+            const newX = parseFloat(document.getElementById('pt-x').value), newZ = parseFloat(document.getElementById('pt-z').value);
+            deltaX = newX - points[editIndex].x; deltaZ = newZ - points[editIndex].z;
+            points[editIndex].x = newX; points[editIndex].z = newZ;
+            if(!points[editIndex].rapid && editIndex !== 0) {
+                points[editIndex].type = document.getElementById('pt-type').value;
+                points[editIndex].val = parseFloat(document.getElementById('pt-val').value);
+            }
+        } 
+        else if (editType === 'SEGMENT') {
+            const p1 = points[editIndex-1], p2 = points[editIndex];
+            const newLenZ = parseFloat(document.getElementById('seg-lenZ').value), newTargetX = parseFloat(document.getElementById('seg-targetX').value);
+            let dirZ = Math.sign(p2.z - p1.z); if (dirZ === 0) dirZ = -1; 
+            const newZ = Math.round((p1.z + dirZ * newLenZ) * 1000) / 1000, newX = newTargetX;
+            deltaZ = newZ - p2.z; deltaX = newX - p2.x;
+            points[editIndex].z = newZ; points[editIndex].x = newX;
+        }
+        for(let i = editIndex + 1; i < points.length; i++) {
+            points[i].z = Math.round((points[i].z + deltaZ) * 1000) / 1000;
+            points[i].x = Math.round((points[i].x + deltaX) * 1000) / 1000;
+        }
+        closeEditor('dim-editor'); renderList(); update();
+    }
+
+    cvs.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    cvs.addEventListener('touchstart', onPointerDown, {passive: false});
+    cvs.addEventListener('touchmove', e => { if(e.target === cvs){ onPointerMove(e); e.preventDefault(); } }, {passive: false});
+    window.addEventListener('touchend', onPointerUp);
+    cvs.oncontextmenu = (e) => e.preventDefault();
+    cvs.addEventListener('wheel', e => { cam.zoom *= (e.deltaY > 0 ? 0.9 : 1.1); update(); e.preventDefault(); }, {passive:false});
+
+    function zoomExtents() { 
+        cvs.width = vbox.clientWidth; cvs.height = vbox.clientHeight;
+        if (points.length === 0 && !bgLoaded && dxfEntities.length === 0) { cam.x = cvs.width / 2; cam.y = cvs.height / 2; cam.zoom = 6.0; } 
+        else {
+            let minZ=0, maxZ=0, minX=0, maxX=0;
+            points.forEach(p => { if(p.z<minZ) minZ=p.z; if(p.z>maxZ) maxZ=p.z; if(p.x<minX) minX=p.x; if(p.x>maxX) maxX=p.x; });
+            let widthZ = (maxZ - minZ) || 10, heightX = (maxX/2 - minX/2) || 10;
+            cam.zoom = Math.min((cvs.width * 0.8) / widthZ, (cvs.height * 0.8) / heightX, 15);
+            cam.x = cvs.width / 2 - ((minZ + maxZ) / 2 * cam.zoom);
+            cam.y = cvs.height / 2 + ((minX/2 + maxX/2) / 2 * cam.zoom); 
+        }
+        update(); 
     }
 
     function update() {
         cvs.width = vbox.clientWidth; cvs.height = vbox.clientHeight;
-        if(cam.y === 0) cam.y = cvs.height / 2;
-        const pts = getPts();
-        const mode = document.getElementById('mode').value;
-        const stockX = parseFloat(document.getElementById('stockX').value);
-        const holeX = parseFloat(document.getElementById('holeX').value);
+        ctx.clearRect(0,0,cvs.width,cvs.height);
+        
+        ctx.save(); ctx.translate(cam.x, cam.y); ctx.scale(cam.zoom, cam.zoom);
 
-        ctx.clearRect(0, 0, cvs.width, cvs.height);
-        ctx.save();
-        ctx.translate(cam.x, cam.y);
-        ctx.scale(cam.zoom, cam.zoom);
+        // 1. 照片底圖渲染
+        if (bgLoaded) {
+            ctx.save(); ctx.globalAlpha = bgConfig.opacity;
+            let drawW = bgImg.width * bgConfig.scale, drawH = bgImg.height * bgConfig.scale;
+            ctx.drawImage(bgImg, bgConfig.z - drawW/2, -bgConfig.x/2 - drawH/2, drawW, drawH);
+            ctx.restore();
+        }
 
-        // 畫中心線 (黑細虛線)
-        ctx.setLineDash([5, 5]); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1/cam.zoom;
-        ctx.beginPath(); ctx.moveTo(-500, 0); ctx.lineTo(500, 0); ctx.stroke(); ctx.setLineDash([]);
+        // 2. DXF 底圖渲染 (青藍色)
+        if (dxfEntities.length > 0) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(56, 189, 248, ${bgConfig.opacity})`;
+            ctx.lineWidth = 1.5/cam.zoom;
+            ctx.beginPath();
+            for(let ent of dxfEntities) {
+                if (ent.type === 'LINE') {
+                    let p1 = transformDxf(ent.z1, ent.x1), p2 = transformDxf(ent.z2, ent.x2);
+                    ctx.moveTo(p1.z, -p1.x/2); ctx.lineTo(p2.z, -p2.x/2);
+                } else if (ent.type === 'LWPOLYLINE' || ent.type === 'POLYLINE') {
+                    if(ent.pts.length > 0) {
+                        let p0 = transformDxf(ent.pts[0].z, ent.pts[0].x);
+                        ctx.moveTo(p0.z, -p0.x/2);
+                        for(let i=1; i<ent.pts.length; i++) {
+                            let p = transformDxf(ent.pts[i].z, ent.pts[i].x);
+                            ctx.lineTo(p.z, -p.x/2);
+                        }
+                    }
+                }
+            }
+            ctx.stroke(); ctx.restore();
+        }
 
-        // 畫胚料範圍 (淡灰色)
-        ctx.fillStyle = "#f1f5f9";
-        if(mode === 'OD') ctx.fillRect(-200, -stockX/2, 200, stockX/2);
-        else ctx.fillRect(-200, -stockX/2, 200, (stockX-holeX)/2 + holeX/2);
-
-        // 繪製輪廓 (黑線)
-        ctx.strokeStyle = '#000000'; ctx.lineWidth = 2/cam.zoom;
+        let left = -cam.x / cam.zoom, right = (cvs.width - cam.x) / cam.zoom;
+        let top = -cam.y / cam.zoom, bottom = (cvs.height - cam.y) / cam.zoom;
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.5/cam.zoom;
         ctx.beginPath();
-        if(pts.length > 0) ctx.moveTo(pts[0].z, -pts[0].x/2);
-        pts.forEach((p, i) => {
-            if(p.r > 0 && i < pts.length-1) ctx.arcTo(p.z, -p.x/2, pts[i+1].z, -pts[i+1].x/2, p.r);
-            else ctx.lineTo(p.z, -p.x/2);
-        });
+        let startZ = Math.floor(left / 10) * 10, endZ = Math.ceil(right / 10) * 10;
+        let startX = Math.floor(top / 10) * 10, endX = Math.ceil(bottom / 10) * 10;
+        for(let i=startZ; i<=endZ; i+=10) { ctx.moveTo(i, top); ctx.lineTo(i, bottom); }
+        for(let i=startX; i<=endX; i+=10) { ctx.moveTo(left, i); ctx.lineTo(right, i); }
         ctx.stroke();
 
-        // 尺寸標註 (紅色)
-        ctx.fillStyle = 'var(--red)'; ctx.font = `${12/cam.zoom}px Arial`;
-        pts.forEach(p => {
-            ctx.beginPath(); ctx.arc(p.z, -p.x/2, 3/cam.zoom, 0, Math.PI*2); ctx.fill();
-            ctx.fillText(`X${p.x} Z${p.z}`, p.z + 2/cam.zoom, -p.x/2 - 2/cam.zoom);
-        });
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1/cam.zoom; ctx.beginPath(); ctx.moveTo(startZ, 0); ctx.lineTo(endZ, 0); ctx.stroke();
+        ctx.strokeStyle = 'red'; ctx.beginPath(); ctx.moveTo(-3,0); ctx.lineTo(3,0); ctx.moveTo(0,-3); ctx.lineTo(0,3); ctx.stroke();
 
+        const stockX = parseFloat(document.getElementById('stockX').value) || 0;
+        const stockZ = parseFloat(document.getElementById('stockZ').value) || 0;
+        if (stockX > 0 || stockZ > 0) {
+            ctx.strokeStyle = 'rgba(100, 116, 139, 0.5)'; ctx.lineWidth = 1.5/cam.zoom; ctx.setLineDash([10/cam.zoom, 5/cam.zoom]);
+            ctx.beginPath();
+            if (stockX > 0) { ctx.moveTo(startZ, -stockX/2); ctx.lineTo(endZ, -stockX/2); }
+            if (stockZ > 0) { ctx.moveTo(stockZ, top); ctx.lineTo(stockZ, bottom); }
+            ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        if (points.length > 0) {
+            ctx.lineWidth = 2.5/cam.zoom;
+            ctx.beginPath(); 
+            for(let i=0; i<points.length; i++) {
+                let p = points[i]; let prev = points[i-1]; let next = points[i+1];
+                if (i === 0 || p.rapid) {
+                    ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.z, -p.x/2);
+                    ctx.fillStyle = '#b45309'; ctx.arc(p.z, -p.x/2, 2.5/cam.zoom, 0, Math.PI*2); ctx.fill(); ctx.moveTo(p.z, -p.x/2);
+                    continue;
+                }
+                ctx.strokeStyle = (mode === 'DIM' && editType === 'SEGMENT' && editIndex === i) ? 'var(--purple)' : '#000';
+                let hasValidNext = next && !next.rapid;
+                if (p.val > 0 && hasValidNext) {
+                    if (p.type === 'R') { ctx.arcTo(p.z, -p.x/2, next.z, -next.x/2, p.val); } 
+                    else if (p.type === 'C') {
+                        let v1z = p.z - prev.z, v1x = p.x/2 - prev.x/2; let len1 = Math.hypot(v1z, v1x);
+                        let v2z = next.z - p.z, v2x = next.x/2 - p.x/2; let len2 = Math.hypot(v2z, v2x);
+                        if(len1 > 0 && len2 > 0) {
+                            ctx.lineTo(p.z - (v1z/len1)*p.val, -(p.x/2 - (v1x/len1)*p.val));
+                            ctx.lineTo(p.z + (v2z/len2)*p.val, -(p.x/2 + (v2x/len2)*p.val));
+                        } else { ctx.lineTo(p.z, -p.x/2); }
+                    }
+                } else { ctx.lineTo(p.z, -p.x/2); }
+            }
+            ctx.stroke();
+            
+            points.forEach((p, i) => {
+                if(i === 0 || p.rapid) return; 
+                ctx.fillStyle = (mode === 'DIM' && editType === 'POINT' && editIndex === i) ? 'var(--purple)' : ((p.val > 0) ? '#f97316' : 'red');
+                ctx.beginPath(); ctx.arc(p.z, -p.x/2, 2/cam.zoom, 0, Math.PI*2); ctx.fill();
+                if (mode === 'DIM') {
+                    let prev = points[i-1];
+                    let lenZ = Math.abs(p.z - prev.z).toFixed(1);
+                    let tagText = `Z:${lenZ} X:${p.x}`;
+                    if(p.val > 0) tagText += ` | ${p.type}${p.val}`;
+                    ctx.font = `bold ${9/cam.zoom}px monospace`;
+                    const tw = ctx.measureText(tagText).width; const th = 12/cam.zoom;
+                    const midZ = (p.z + prev.z)/2; const midX = (p.x/2 + prev.x/2)/2;
+                    const boxZ = midZ - tw/2; const boxX = -midX - 15/cam.zoom;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fillRect(boxZ, boxX, tw + 4/cam.zoom, th);
+                    ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 0.5/cam.zoom; ctx.strokeRect(boxZ, boxX, tw + 4/cam.zoom, th);
+                    ctx.fillStyle = '#8b5cf6'; ctx.fillText(tagText, boxZ + 2/cam.zoom, boxX + 9/cam.zoom);
+                }
+            });
+        }
+
+        if (mode === 'TRIM' && slashPath.length > 1) {
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'; ctx.lineWidth = 2/cam.zoom;
+            ctx.beginPath(); ctx.moveTo(slashPath[0].z, -slashPath[0].x/2);
+            for(let i=1; i<slashPath.length; i++) ctx.lineTo(slashPath[i].z, -slashPath[i].x/2);
+            ctx.stroke();
+        }
+
+        if (mode === 'DRAW' && points.length > 0 && previewCoord && !needBreak) {
+            const last = points[points.length-1];
+            ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)'; ctx.lineWidth = 2/cam.zoom; ctx.setLineDash([5/cam.zoom, 5/cam.zoom]);
+            ctx.beginPath(); ctx.moveTo(last.z, -last.x/2); ctx.lineTo(previewCoord.z, -previewCoord.x/2); ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        if(snapTarget && snapTarget.snapped) {
+            ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1.5/cam.zoom; ctx.strokeRect(snapTarget.z-2/cam.zoom, -snapTarget.x/2-2/cam.zoom, 4/cam.zoom, 4/cam.zoom);
+        }
         ctx.restore();
     }
 
-    // 手機觸控支援：雙指縮放與單指平移
-    vbox.addEventListener('touchstart', e => {
-        if(e.touches.length === 1) {
-            drag = true; lastM = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        } else if(e.touches.length === 2) {
-            initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            initialZoom = cam.zoom;
-        }
-    });
-
-    vbox.addEventListener('touchmove', e => {
-        if(e.touches.length === 1 && drag) {
-            cam.x += (e.touches[0].clientX - lastM.x); cam.y += (e.touches[0].clientY - lastM.y);
-            lastM = { x: e.touches[0].clientX, y: e.touches[0].clientY }; update();
-        } else if(e.touches.length === 2) {
-            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            cam.zoom = initialZoom * (dist / initialDist); update();
-        }
-        e.preventDefault();
-    }, {passive: false});
-
-    window.addEventListener('touchend', () => drag = false);
-
-    // 滑鼠事件
-    vbox.addEventListener('wheel', e => { cam.zoom *= (e.deltaY > 0 ? 0.9 : 1.1); update(); e.preventDefault(); }, {passive:false});
-    vbox.addEventListener('mousedown', e => { drag = true; lastM = {x:e.clientX, y:e.clientY}; });
-    window.addEventListener('mouseup', () => drag = false);
-    window.addEventListener('mousemove', e => { if(drag) { cam.x += (e.clientX - lastM.x); cam.y += (e.clientY - lastM.y); lastM = {x:e.clientX, y:e.clientY}; update(); } });
-
-    function zoomExtents() {
-        const stockX = parseFloat(document.getElementById('stockX').value);
-        cam.zoom = (cvs.height / 2 * 0.6) / (stockX / 2);
-        cam.x = cvs.width * 0.7; cam.y = cvs.height / 2;
-        update();
-    }
-
-    function generateNC() {
-        const pts = getPts();
-        const mode = document.getElementById('mode').value;
-        const holeX = parseFloat(document.getElementById('holeX').value);
-        const stockX = parseFloat(document.getElementById('stockX').value);
-        const toolR = parseFloat(document.getElementById('toolR').value);
-        
-        const safeX = mode === 'OD' ? (stockX + 2) : (holeX - 2);
-        let g = `% \nO8000 (V8.0 BORE OPTIMIZED);\n`;
-        g += `G21 G99 G40;\nT0101;\nG50 S2000;\nG96 S180 M03;\n`;
-        g += `G00 X${safeX.toFixed(3)} Z2.0 M08;\n`;
-        g += `G71 U${document.getElementById('cutU').value} R1.0;\n`;
-        g += `G71 P10 Q20 U0.4 W0.1 F0.2;\n`;
-        g += `N10 G00 X${pts[0].x.toFixed(3)};\n`;
-        pts.forEach((p, i) => {
-            let cx = p.x, cz = p.z;
-            if (i > 0 && toolR > 0) {
-                const angle = Math.atan2(Math.abs(pts[i].x - pts[i-1].x)/2, Math.abs(pts[i].z - pts[i-1].z));
-                cx += (2 * toolR * (1 - Math.cos(angle))) * (mode==='OD'?1:-1);
-                cz += (toolR * Math.sin(angle));
-            }
-            g += `G01 X${cx.toFixed(3)} Z${cz.toFixed(3)}${p.r>0?' R'+p.r:''};\n`;
+    function renderList() {
+        const list = document.getElementById('list'); list.innerHTML = '';
+        points.forEach((p, i) => {
+            const div = document.createElement('div'); div.className = `point-item ${p.rapid ? 'rapid-move' : ''}`;
+            div.innerHTML = `
+                <div><label>X</label><input type="number" value="${p.x}" step="0.1" oninput="points[${i}].x=Number(this.value); update()"></div>
+                <div><label>Z</label><input type="number" value="${p.z}" step="0.1" oninput="points[${i}].z=Number(this.value); update()"></div>
+                <div><label>連線模式</label><select onchange="points[${i}].rapid=(this.value==='true'); update()"><option value="false" ${!p.rapid?'selected':''}>G01</option><option value="true" ${p.rapid?'selected':''}>G00</option></select></div>
+                <div><label>C/R</label>${p.rapid ? '<span style="font-size:10px;color:#999">無效</span>' : `<select style="width:40px;padding:2px" onchange="points[${i}].type=this.value; update()"><option value="R" ${p.type==='R'?'selected':''}>R</option><option value="C" ${p.type==='C'?'selected':''}>C</option></select><input type="number" style="width:50px;padding:2px;margin-left:2px" value="${p.val}" step="0.1" oninput="points[${i}].val=Number(this.value); update()">`}</div>
+                <button onclick="points.splice(${i},1); renderList(); update()" style="border:none; background:none; color:red; cursor:pointer; font-size:16px;">×</button>
+            `;
+            list.appendChild(div);
         });
-        g += `N20 X${safeX.toFixed(3)};\nM30;\n%`;
-        document.getElementById('output').innerText = g;
     }
 
-    window.onload = () => { addPoint(30,0); addPoint(45,-25); zoomExtents(); };
+    function generateNC(type) {
+        if(points.length < 1) return;
+        const toolR = parseFloat(document.getElementById('toolR').value) || 0;
+        const modeVal = document.getElementById('mode').value;
+        const insAng = document.getElementById('insAng').options[document.getElementById('insAng').selectedIndex].text;
+        const mat = document.getElementById('mat');
+        const stockX = parseFloat(document.getElementById('stockX').value) || 0;
+        const stockZ = parseFloat(document.getElementById('stockZ').value) || 0;
+        const holeX = parseFloat(document.getElementById('holeX').value) || 0;
+        
+        let safeX = modeVal === 'OD' ? (stockX > 0 ? stockX + 2 : points[0].x + 2) : Math.max(0, holeX - 2);
+        let safeZ = stockZ > 0 ? stockZ + 2.0 : 2.0;
+
+        let nc = `% \nO3700 (${type === 'G71' ? 'ROUGHING CYCLE' : 'FINISHING PATH'});\n`;
+        nc += `(MAT: ${mat.options[mat.selectedIndex].text})\n`;
+        nc += `(TOOL: R${toolR}, ${insAng}, MODE: ${modeVal})\n`;
+        if (stockX > 0) nc += `(STOCK OD: X${stockX}, Z${stockZ})\n`;
+        nc += "G21 G99 G40;\nT0101;\n";
+        nc += `G50 S2000;\nG96 S${mat.value} M03;\n`;
+        nc += `G00 X${safeX.toFixed(3)} Z${safeZ.toFixed(3)} M08;\n`; 
+        
+        if (type === 'G71') {
+            let u_doc = 2.0, r_ret = 0.5, u_all = modeVal === 'OD' ? 0.5 : -0.5, w_all = 0.1;
+            if (stockZ > 0) { nc += `(FACING)\nG00 X${safeX.toFixed(3)} Z0.0;\nG01 X-1.0 F0.2;\nG00 X${safeX.toFixed(3)} Z${safeZ.toFixed(3)};\n`; }
+            nc += `(G71 ROUGHING)\n`;
+            nc += `G71 U${u_doc.toFixed(1)} R${r_ret.toFixed(1)};\n`;
+            nc += `G71 P100 Q200 U${u_all} W${w_all} F0.25;\n`;
+            nc += `N100 G00 X${points[0].x.toFixed(3)};\n`;
+        }
+
+        let pathCode = "";
+        points.forEach((p, i) => {
+            if (i === 0 || p.rapid) { if(i !== 0) pathCode += `G00 X${p.x.toFixed(3)} Z${p.z.toFixed(3)};\n`; return; }
+            let cx = p.x, cz = p.z; let prev = points[i-1];
+            if (toolR > 0 && p.val === 0 && !p.rapid && !prev.rapid) {
+                const dx = (p.x - prev.x) / 2, dz = p.z - prev.z;
+                if (dx !== 0 && dz !== 0) {
+                    const angle = Math.atan2(Math.abs(dx), Math.abs(dz));
+                    const dir = modeVal === 'OD' ? 1 : -1;
+                    cx += (2 * toolR * (1 - Math.cos(angle))) * dir;
+                    cz += (toolR * Math.sin(angle));
+                }
+            }
+            let line = `G01 X${cx.toFixed(3)} Z${cz.toFixed(3)}`;
+            if(p.val > 0) line += ` ${p.type}${p.val.toFixed(3)}`;
+            pathCode += line + (type==='G71' && i===1 ? ' F0.15' : '') + ";\n";
+        });
+        nc += pathCode;
+
+        if (type === 'G71') {
+            nc += `N200 G00 X${safeX.toFixed(3)};\n`;
+            nc += `(G70 FINISHING OPTIONAL)\n`;
+            nc += `(G70 P100 Q200 F0.15;)\n`;
+        }
+        document.getElementById('output').innerText = nc + "G00 X200.0 Z100.0 M09;\nM30;\n%";
+    }
+
+    function clearAll() { points = []; renderList(); update(); }
+    function saveProject() { localStorage.setItem('cnc_v37', JSON.stringify(points)); alert('儲存成功！\n(圖檔因限制不寫入緩存)'); }
+    window.onload = () => { 
+        const s = localStorage.getItem('cnc_v37'); 
+        if(s) { points = JSON.parse(s); renderList(); } 
+        cvs.width = vbox.clientWidth; cvs.height = vbox.clientHeight; zoomExtents(); 
+    };
+    window.onresize = update; 
 </script>
 </body>
 </html>
