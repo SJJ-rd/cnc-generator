@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gemini CNC 專業 CAD/CAM V37.0</title>
+    <title>Gemini CNC 影像記憶 CAD V39.0 (手機滿版)</title>
     <style>
         :root { --bg: #f8fafc; --panel: #ffffff; --accent: #2563eb; --red: #dc2626; --green: #16a34a; --purple: #8b5cf6; --text: #1e293b; --border: #cbd5e1; --cad-black: #0f172a; --gold: #b45309; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -11,9 +11,14 @@
         @media (max-width: 950px) {
             body { flex-direction: column; height: auto; overflow-y: auto; }
             .sidebar { width: 100% !important; border-right: none !important; }
-            .viewport { height: 450px !important; flex: none !important; }
-            .cad-toolbar { flex-direction: row !important; flex-wrap: wrap; justify-content: center; background: rgba(255,255,255,0.9); padding: 5px; width: 100%; top: 0 !important; right: 0 !important; border-bottom: 1px solid var(--border); }
+            .viewport { height: 480px !important; flex: none !important; }
+            .cad-toolbar { flex-direction: row !important; flex-wrap: wrap; justify-content: center; background: rgba(255,255,255,0.95); padding: 5px; width: 100%; top: 0 !important; right: 0 !important; border-bottom: 1px solid var(--border); box-sizing: border-box; }
         }
+
+        /* 📱 全螢幕模式 CSS 覆蓋 */
+        body.fullscreen-mode { height: 100vh !important; overflow: hidden !important; }
+        body.fullscreen-mode .sidebar { display: none !important; }
+        body.fullscreen-mode .viewport { height: 100vh !important; flex: 1 !important; }
 
         .sidebar { width: 480px; background: var(--panel); border-right: 2px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; z-index: 100; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
         .config-header { padding: 15px; background: var(--cad-black); color: #38bdf8; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
@@ -39,6 +44,7 @@
         .tool-btn.dim-mode.active { background: var(--purple); color: white; }
         .tool-btn.break-btn { border-color: var(--gold); color: var(--gold); border-style: dashed; }
         .tool-btn.break-btn:active { background: var(--gold); color: white; }
+        .tool-btn.fullscreen-btn { border-color: #0f172a; color: #0f172a; background: #f8fafc; }
 
         .smart-editor { position: absolute; display: none; background: white; border: 2px solid var(--purple); padding: 12px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.25); z-index: 200; transform: translate(-50%, -100%); margin-top: -15px; width: 180px; }
         .smart-editor input, .smart-editor select { margin-bottom: 8px; font-weight: bold; border: 1px solid var(--purple); }
@@ -57,7 +63,7 @@
 
 <div class="sidebar">
     <div class="config-header">
-        <span>CNC V37.0 (DXF & 拍照版)</span>
+        <span>CNC V39.0 (手機滿版)</span>
         <button onclick="saveProject()" style="background:none; border:1px solid #38bdf8; color:#38bdf8; border-radius:4px; padding:4px 10px; cursor:pointer;">💾 存檔</button>
     </div>
     
@@ -70,16 +76,16 @@
         <div><label>刀尖 R 角</label><input type="number" id="toolR" value="0.4" step="0.4" oninput="update()"></div>
         <div><label>預鑽孔徑</label><input type="number" id="holeX" value="0" oninput="update()"></div>
 
-        <h4>2. 底圖 / DXF 匯入</h4>
+        <h4>2. 拍照底圖 / DXF</h4>
         <div style="grid-column: span 2; display: flex; gap: 5px;">
             <input type="file" id="bg-upload" accept="image/*,.dxf" capture="environment" style="display:none;" onchange="loadBg(event)">
-            <button onclick="document.getElementById('bg-upload').click()" style="flex:1; padding:8px; background:var(--accent); color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">📁 載入 圖檔/DXF</button>
+            <button onclick="document.getElementById('bg-upload').click()" style="flex:1; padding:8px; background:var(--accent); color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">📷 拍照 / 載入</button>
             <button onclick="clearBg()" style="flex:1; padding:8px; background:var(--red); color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">🗑️ 清除底圖</button>
         </div>
-        <div><label>縮放比例 (對齊)</label><input type="number" id="bg-scale" value="1.0" step="0.1" oninput="updateBg()"></div>
+        <div><label>縮放比例</label><input type="number" id="bg-scale" value="1.0" step="0.1" oninput="updateBg()"></div>
         <div><label>透明度</label><input type="range" id="bg-opacity" min="0.1" max="1.0" step="0.1" value="0.5" oninput="updateBg()"></div>
-        <div><label>偏移 Z (右)</label><input type="number" id="bg-z" value="0" step="5" oninput="updateBg()"></div>
-        <div><label>偏移 X (下)</label><input type="number" id="bg-x" value="0" step="5" oninput="updateBg()"></div>
+        <div><label>Z 軸偏移</label><input type="number" id="bg-z" value="0" step="5" oninput="updateBg()"></div>
+        <div><label>X 軸偏移</label><input type="number" id="bg-x" value="0" step="5" oninput="updateBg()"></div>
     </div>
 
     <div class="scroll-area" id="list"></div>
@@ -91,6 +97,8 @@
 
 <div class="viewport" id="vbox">
     <div class="cad-toolbar">
+        <button class="tool-btn fullscreen-btn" id="btn-fullscreen" onclick="toggleFullscreen()">📱 隱藏選單 (滿版)</button>
+        
         <button class="tool-btn active" id="btn-draw" onclick="setMode('DRAW')">1. 直線繪圖</button>
         <button class="tool-btn break-btn" onclick="breakLine()">✂️ 結束線段 (斷開)</button>
         <button class="tool-btn" id="btn-3p" onclick="setMode('3P_ARC')">2. 三點定弧</button>
@@ -135,24 +143,46 @@
     let cam = { x: 0, y: 0, zoom: 6.0 };
     let mode = 'DRAW'; 
     let ortho = false;
+    let isFullscreen = false; // 全螢幕狀態變數
     let needBreak = false; 
     let previewCoord = null; 
     let snapTarget = null;
     let ptr = { isDown: false, startX: 0, startY: 0, moved: false, lastX: 0, lastY: 0 };
     let editIndex = -1; let editType = null; let slashPath = []; let arcTemp = [];
 
-    // --- 底圖與 DXF 變數 ---
     let bgImg = new Image();
     let bgLoaded = false;
-    let dxfEntities = []; // 儲存解析出來的 DXF 線條
+    let dxfEntities = [];
     let bgConfig = { z: 0, x: 0, scale: 1.0, opacity: 0.5 };
 
-    // --- 超輕量化 DXF ASCII 解析器 ---
+    // --- 手機全螢幕切換邏輯 ---
+    function toggleFullscreen() {
+        isFullscreen = !isFullscreen;
+        const btn = document.getElementById('btn-fullscreen');
+        if (isFullscreen) {
+            document.body.classList.add('fullscreen-mode');
+            btn.innerHTML = '🗂️ 顯示選單 (退滿版)';
+            btn.style.background = '#0f172a';
+            btn.style.color = 'white';
+        } else {
+            document.body.classList.remove('fullscreen-mode');
+            btn.innerHTML = '📱 隱藏選單 (滿版)';
+            btn.style.background = '#f8fafc';
+            btn.style.color = '#0f172a';
+        }
+        // 延遲更新畫布大小以等待 CSS 動畫/佈局完成
+        setTimeout(() => {
+            cvs.width = vbox.clientWidth; 
+            cvs.height = vbox.clientHeight; 
+            update();
+        }, 150);
+    }
+    // ----------------------
+
     function parseDXF(text) {
         let lines = text.split(/\r\n|\n|\r/);
         let entities = [];
-        let inEnt = false;
-        let current = null;
+        let inEnt = false, current = null;
         for (let i = 0; i < lines.length; i++) {
             let c = lines[i].trim(), v = lines[++i] ? lines[i].trim() : "";
             if (c === "0" && v === "SECTION") {
@@ -169,14 +199,12 @@
                     else current = null;
                 } else if (current) {
                     if (current.type === "LINE") {
-                        if (c==="10") current.z1 = parseFloat(v);
-                        if (c==="20") current.x1 = parseFloat(v) * 2; // CAD Y 轉車床 X (直徑)
-                        if (c==="11") current.z2 = parseFloat(v);
-                        if (c==="21") current.x2 = parseFloat(v) * 2;
+                        if (c==="10") current.z1 = parseFloat(v); if (c==="20") current.x1 = parseFloat(v)*2;
+                        if (c==="11") current.z2 = parseFloat(v); if (c==="21") current.x2 = parseFloat(v)*2;
                     }
                     else if (current.type === "LWPOLYLINE" || current.type === "POLYLINE") {
                         if (c==="10") current.pts.push({z: parseFloat(v), x: 0});
-                        if (c==="20" && current.pts.length>0) current.pts[current.pts.length-1].x = parseFloat(v) * 2;
+                        if (c==="20" && current.pts.length>0) current.pts[current.pts.length-1].x = parseFloat(v)*2;
                     }
                 }
             }
@@ -185,9 +213,7 @@
         return entities;
     }
 
-    function transformDxf(dxfZ, dxfX) {
-        return { z: (dxfZ * bgConfig.scale) + bgConfig.z, x: (dxfX * bgConfig.scale) + bgConfig.x };
-    }
+    function transformDxf(dxfZ, dxfX) { return { z: (dxfZ * bgConfig.scale) + bgConfig.z, x: (dxfX * bgConfig.scale) + bgConfig.x }; }
 
     function loadBg(e) {
         const file = e.target.files[0];
@@ -199,10 +225,7 @@
                 bgLoaded = false;
                 dxfEntities = parseDXF(evt.target.result);
                 bgConfig.scale = 1.0; bgConfig.x = 0; bgConfig.z = 0;
-                document.getElementById('bg-scale').value = '1.0';
-                document.getElementById('bg-x').value = '0';
-                document.getElementById('bg-z').value = '0';
-                alert('✅ DXF 載入成功！滑鼠靠近藍色線條端點即可鎖點。');
+                document.getElementById('bg-scale').value = '1.0'; document.getElementById('bg-x').value = '0'; document.getElementById('bg-z').value = '0';
                 update();
             };
             reader.readAsText(file);
@@ -233,7 +256,7 @@
 
     function setMode(m) {
         mode = m; slashPath = []; arcTemp = [];
-        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tool-btn').forEach(b => { if(b.id !== 'btn-fullscreen') b.classList.remove('active'); });
         if(m === 'DRAW') document.getElementById('btn-draw').classList.add('active');
         if(m === '3P_ARC') document.getElementById('btn-3p').classList.add('active');
         if(m === 'TRIM') document.getElementById('btn-trim').classList.add('active');
@@ -251,12 +274,8 @@
         let x = -(clientY - rect.top - cam.y) / cam.zoom * 2;
         let snapped = false;
         
-        // 1. 先鎖既有點位
-        for(let t of [{x:0, z:0}, ...points]) {
-            if(Math.hypot(z - t.z, x - t.x) < (10 / cam.zoom)) { z = t.z; x = t.x; snapped = true; break; }
-        }
+        for(let t of [{x:0, z:0}, ...points]) { if(Math.hypot(z - t.z, x - t.x) < (10 / cam.zoom)) { z = t.z; x = t.x; snapped = true; break; } }
         
-        // 2. 如果沒鎖到，鎖 DXF 的端點
         if (!snapped && dxfEntities.length > 0) {
             for(let ent of dxfEntities) {
                 if (ent.type === 'LINE') {
@@ -303,8 +322,7 @@
     function solveCircle(p1, p2, p3) {
         const x1=p1.z, y1=p1.x/2, x2=p2.z, y2=p2.x/2, x3=p3.z, y3=p3.x/2;
         const D = 2*(x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2));
-        if(Math.abs(D) < 0.01) return null;
-        return { r: Math.sqrt((x1-x2)**2 + (y1-y2)**2) };
+        if(Math.abs(D) < 0.01) return null; return { r: Math.sqrt((x1-x2)**2 + (y1-y2)**2) };
     }
 
     function executeTrim(index, slashPt) {
@@ -341,6 +359,7 @@
         if(e.target !== cvs && !ptr.isDown) return;
         let clientX = e.clientX, clientY = e.clientY;
         if(e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; }
+
         const coord = getCoord(clientX, clientY);
         snapTarget = coord; previewCoord = coord; 
         
@@ -352,6 +371,7 @@
 
         if (ptr.isDown) {
             if (Math.hypot(clientX - ptr.startX, clientY - ptr.startY) > 5) ptr.moved = true;
+            
             if(isPanning) { cam.x += (clientX - ptr.lastX); cam.y += (clientY - ptr.lastY); } 
             else if (mode === 'TRIM' && ptr.moved) {
                 const currentRaw = getRawCoord(clientX, clientY);
@@ -376,6 +396,7 @@
 
         if (!ptr.moved) {
             const coord = getCoord(ptr.startX, ptr.startY);
+
             if (mode === 'DRAW') {
                 const isRapid = (points.length === 0 || needBreak);
                 points.push({ x: coord.x, z: coord.z, type:'R', val:0, rapid: isRapid });
@@ -405,29 +426,21 @@
                 }
 
                 if(hitIndex !== -1) {
-                    editIndex = hitIndex;
-                    const ed = document.getElementById('dim-editor');
+                    editIndex = hitIndex; const ed = document.getElementById('dim-editor');
                     if (editType === 'POINT') {
                         document.getElementById('dim-title').innerText = `編輯轉折端點`;
-                        document.getElementById('seg-inputs').style.display = 'none';
-                        document.getElementById('pt-inputs').style.display = 'block';
-                        document.getElementById('pt-x').value = points[hitIndex].x;
-                        document.getElementById('pt-z').value = points[hitIndex].z;
-                        document.getElementById('pt-type').value = points[hitIndex].type || 'R';
-                        document.getElementById('pt-val').value = points[hitIndex].val || 0;
-                        
+                        document.getElementById('seg-inputs').style.display = 'none'; document.getElementById('pt-inputs').style.display = 'block';
+                        document.getElementById('pt-x').value = points[hitIndex].x; document.getElementById('pt-z').value = points[hitIndex].z;
+                        document.getElementById('pt-type').value = points[hitIndex].type || 'R'; document.getElementById('pt-val').value = points[hitIndex].val || 0;
                         let isRapidPoint = (hitIndex === 0 || points[hitIndex].rapid);
-                        document.getElementById('pt-type').disabled = isRapidPoint;
-                        document.getElementById('pt-val').disabled = isRapidPoint;
+                        document.getElementById('pt-type').disabled = isRapidPoint; document.getElementById('pt-val').disabled = isRapidPoint;
                         document.getElementById('btn-explode').style.display = (!isRapidPoint && points[hitIndex].val > 0) ? 'block' : 'none';
                     } 
                     else if (editType === 'SEGMENT') {
                         document.getElementById('dim-title').innerText = `編輯線段尺寸`;
-                        document.getElementById('pt-inputs').style.display = 'none';
-                        document.getElementById('seg-inputs').style.display = 'block';
+                        document.getElementById('pt-inputs').style.display = 'none'; document.getElementById('seg-inputs').style.display = 'block';
                         let p1 = points[hitIndex-1], p2 = points[hitIndex];
-                        document.getElementById('seg-lenZ').value = Math.abs(p2.z - p1.z).toFixed(3);
-                        document.getElementById('seg-targetX').value = p2.x.toFixed(3);
+                        document.getElementById('seg-lenZ').value = Math.abs(p2.z - p1.z).toFixed(3); document.getElementById('seg-targetX').value = p2.x.toFixed(3);
                     }
                     ed.style.left = ptr.startX + 'px'; ed.style.top = ptr.startY + 'px'; ed.style.display = 'block';
                 }
@@ -456,8 +469,7 @@
             deltaX = newX - points[editIndex].x; deltaZ = newZ - points[editIndex].z;
             points[editIndex].x = newX; points[editIndex].z = newZ;
             if(!points[editIndex].rapid && editIndex !== 0) {
-                points[editIndex].type = document.getElementById('pt-type').value;
-                points[editIndex].val = parseFloat(document.getElementById('pt-val').value);
+                points[editIndex].type = document.getElementById('pt-type').value; points[editIndex].val = parseFloat(document.getElementById('pt-val').value);
             }
         } 
         else if (editType === 'SEGMENT') {
@@ -469,20 +481,14 @@
             points[editIndex].z = newZ; points[editIndex].x = newX;
         }
         for(let i = editIndex + 1; i < points.length; i++) {
-            points[i].z = Math.round((points[i].z + deltaZ) * 1000) / 1000;
-            points[i].x = Math.round((points[i].x + deltaX) * 1000) / 1000;
+            points[i].z = Math.round((points[i].z + deltaZ) * 1000) / 1000; points[i].x = Math.round((points[i].x + deltaX) * 1000) / 1000;
         }
         closeEditor('dim-editor'); renderList(); update();
     }
 
-    cvs.addEventListener('mousedown', onPointerDown);
-    window.addEventListener('mousemove', onPointerMove);
-    window.addEventListener('mouseup', onPointerUp);
-    cvs.addEventListener('touchstart', onPointerDown, {passive: false});
-    cvs.addEventListener('touchmove', e => { if(e.target === cvs){ onPointerMove(e); e.preventDefault(); } }, {passive: false});
-    window.addEventListener('touchend', onPointerUp);
-    cvs.oncontextmenu = (e) => e.preventDefault();
-    cvs.addEventListener('wheel', e => { cam.zoom *= (e.deltaY > 0 ? 0.9 : 1.1); update(); e.preventDefault(); }, {passive:false});
+    cvs.addEventListener('mousedown', onPointerDown); window.addEventListener('mousemove', onPointerMove); window.addEventListener('mouseup', onPointerUp);
+    cvs.addEventListener('touchstart', onPointerDown, {passive: false}); cvs.addEventListener('touchmove', e => { if(e.target === cvs){ onPointerMove(e); e.preventDefault(); } }, {passive: false}); window.addEventListener('touchend', onPointerUp);
+    cvs.oncontextmenu = (e) => e.preventDefault(); cvs.addEventListener('wheel', e => { cam.zoom *= (e.deltaY > 0 ? 0.9 : 1.1); update(); e.preventDefault(); }, {passive:false});
 
     function zoomExtents() { 
         cvs.width = vbox.clientWidth; cvs.height = vbox.clientHeight;
@@ -492,8 +498,7 @@
             points.forEach(p => { if(p.z<minZ) minZ=p.z; if(p.z>maxZ) maxZ=p.z; if(p.x<minX) minX=p.x; if(p.x>maxX) maxX=p.x; });
             let widthZ = (maxZ - minZ) || 10, heightX = (maxX/2 - minX/2) || 10;
             cam.zoom = Math.min((cvs.width * 0.8) / widthZ, (cvs.height * 0.8) / heightX, 15);
-            cam.x = cvs.width / 2 - ((minZ + maxZ) / 2 * cam.zoom);
-            cam.y = cvs.height / 2 + ((minX/2 + maxX/2) / 2 * cam.zoom); 
+            cam.x = cvs.width / 2 - ((minZ + maxZ) / 2 * cam.zoom); cam.y = cvs.height / 2 + ((minX/2 + maxX/2) / 2 * cam.zoom); 
         }
         update(); 
     }
@@ -502,9 +507,12 @@
         cvs.width = vbox.clientWidth; cvs.height = vbox.clientHeight;
         ctx.clearRect(0,0,cvs.width,cvs.height);
         
+        const vc = parseFloat(document.getElementById('mat').value);
+        const maxD = points.length > 0 ? Math.max(...points.map(p=>p.x), 20) : 20;
+        document.getElementById('calcS').value = Math.round((vc*1000)/(Math.PI*maxD)) + " RPM";
+
         ctx.save(); ctx.translate(cam.x, cam.y); ctx.scale(cam.zoom, cam.zoom);
 
-        // 1. 照片底圖渲染
         if (bgLoaded) {
             ctx.save(); ctx.globalAlpha = bgConfig.opacity;
             let drawW = bgImg.width * bgConfig.scale, drawH = bgImg.height * bgConfig.scale;
@@ -512,24 +520,16 @@
             ctx.restore();
         }
 
-        // 2. DXF 底圖渲染 (青藍色)
         if (dxfEntities.length > 0) {
-            ctx.save();
-            ctx.strokeStyle = `rgba(56, 189, 248, ${bgConfig.opacity})`;
-            ctx.lineWidth = 1.5/cam.zoom;
-            ctx.beginPath();
+            ctx.save(); ctx.strokeStyle = `rgba(56, 189, 248, ${bgConfig.opacity})`; ctx.lineWidth = 1.5/cam.zoom; ctx.beginPath();
             for(let ent of dxfEntities) {
                 if (ent.type === 'LINE') {
                     let p1 = transformDxf(ent.z1, ent.x1), p2 = transformDxf(ent.z2, ent.x2);
                     ctx.moveTo(p1.z, -p1.x/2); ctx.lineTo(p2.z, -p2.x/2);
                 } else if (ent.type === 'LWPOLYLINE' || ent.type === 'POLYLINE') {
                     if(ent.pts.length > 0) {
-                        let p0 = transformDxf(ent.pts[0].z, ent.pts[0].x);
-                        ctx.moveTo(p0.z, -p0.x/2);
-                        for(let i=1; i<ent.pts.length; i++) {
-                            let p = transformDxf(ent.pts[i].z, ent.pts[i].x);
-                            ctx.lineTo(p.z, -p.x/2);
-                        }
+                        let p0 = transformDxf(ent.pts[0].z, ent.pts[0].x); ctx.moveTo(p0.z, -p0.x/2);
+                        for(let i=1; i<ent.pts.length; i++) { let p = transformDxf(ent.pts[i].z, ent.pts[i].x); ctx.lineTo(p.z, -p.x/2); }
                     }
                 }
             }
@@ -538,8 +538,7 @@
 
         let left = -cam.x / cam.zoom, right = (cvs.width - cam.x) / cam.zoom;
         let top = -cam.y / cam.zoom, bottom = (cvs.height - cam.y) / cam.zoom;
-        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.5/cam.zoom;
-        ctx.beginPath();
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.5/cam.zoom; ctx.beginPath();
         let startZ = Math.floor(left / 10) * 10, endZ = Math.ceil(right / 10) * 10;
         let startX = Math.floor(top / 10) * 10, endX = Math.ceil(bottom / 10) * 10;
         for(let i=startZ; i<=endZ; i+=10) { ctx.moveTo(i, top); ctx.lineTo(i, bottom); }
@@ -560,14 +559,12 @@
         }
 
         if (points.length > 0) {
-            ctx.lineWidth = 2.5/cam.zoom;
-            ctx.beginPath(); 
+            ctx.lineWidth = 2.5/cam.zoom; ctx.beginPath(); 
             for(let i=0; i<points.length; i++) {
                 let p = points[i]; let prev = points[i-1]; let next = points[i+1];
                 if (i === 0 || p.rapid) {
                     ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.z, -p.x/2);
-                    ctx.fillStyle = '#b45309'; ctx.arc(p.z, -p.x/2, 2.5/cam.zoom, 0, Math.PI*2); ctx.fill(); ctx.moveTo(p.z, -p.x/2);
-                    continue;
+                    ctx.fillStyle = '#b45309'; ctx.arc(p.z, -p.x/2, 2.5/cam.zoom, 0, Math.PI*2); ctx.fill(); ctx.moveTo(p.z, -p.x/2); continue;
                 }
                 ctx.strokeStyle = (mode === 'DIM' && editType === 'SEGMENT' && editIndex === i) ? 'var(--purple)' : '#000';
                 let hasValidNext = next && !next.rapid;
@@ -590,14 +587,11 @@
                 ctx.fillStyle = (mode === 'DIM' && editType === 'POINT' && editIndex === i) ? 'var(--purple)' : ((p.val > 0) ? '#f97316' : 'red');
                 ctx.beginPath(); ctx.arc(p.z, -p.x/2, 2/cam.zoom, 0, Math.PI*2); ctx.fill();
                 if (mode === 'DIM') {
-                    let prev = points[i-1];
-                    let lenZ = Math.abs(p.z - prev.z).toFixed(1);
-                    let tagText = `Z:${lenZ} X:${p.x}`;
-                    if(p.val > 0) tagText += ` | ${p.type}${p.val}`;
-                    ctx.font = `bold ${9/cam.zoom}px monospace`;
-                    const tw = ctx.measureText(tagText).width; const th = 12/cam.zoom;
-                    const midZ = (p.z + prev.z)/2; const midX = (p.x/2 + prev.x/2)/2;
-                    const boxZ = midZ - tw/2; const boxX = -midX - 15/cam.zoom;
+                    let prev = points[i-1], lenZ = Math.abs(p.z - prev.z).toFixed(1);
+                    let tagText = `Z:${lenZ} X:${p.x}`; if(p.val > 0) tagText += ` | ${p.type}${p.val}`;
+                    ctx.font = `bold ${9/cam.zoom}px monospace`; const tw = ctx.measureText(tagText).width; const th = 12/cam.zoom;
+                    const midZ = (p.z + prev.z)/2, midX = (p.x/2 + prev.x/2)/2;
+                    const boxZ = midZ - tw/2, boxX = -midX - 15/cam.zoom;
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fillRect(boxZ, boxX, tw + 4/cam.zoom, th);
                     ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 0.5/cam.zoom; ctx.strokeRect(boxZ, boxX, tw + 4/cam.zoom, th);
                     ctx.fillStyle = '#8b5cf6'; ctx.fillText(tagText, boxZ + 2/cam.zoom, boxX + 9/cam.zoom);
@@ -652,7 +646,7 @@
         let safeX = modeVal === 'OD' ? (stockX > 0 ? stockX + 2 : points[0].x + 2) : Math.max(0, holeX - 2);
         let safeZ = stockZ > 0 ? stockZ + 2.0 : 2.0;
 
-        let nc = `% \nO3700 (${type === 'G71' ? 'ROUGHING CYCLE' : 'FINISHING PATH'});\n`;
+        let nc = `% \nO3900 (${type === 'G71' ? 'ROUGHING CYCLE' : 'FINISHING PATH'});\n`;
         nc += `(MAT: ${mat.options[mat.selectedIndex].text})\n`;
         nc += `(TOOL: R${toolR}, ${insAng}, MODE: ${modeVal})\n`;
         if (stockX > 0) nc += `(STOCK OD: X${stockX}, Z${stockZ})\n`;
@@ -696,11 +690,41 @@
         document.getElementById('output').innerText = nc + "G00 X200.0 Z100.0 M09;\nM30;\n%";
     }
 
-    function clearAll() { points = []; renderList(); update(); }
-    function saveProject() { localStorage.setItem('cnc_v37', JSON.stringify(points)); alert('儲存成功！\n(圖檔因限制不寫入緩存)'); }
+    function saveProject() {
+        try {
+            let savedBg = null;
+            if (bgLoaded && bgImg.src) {
+                const MAX_SIZE = 1200; 
+                let w = bgImg.width, h = bgImg.height;
+                if (w > MAX_SIZE || h > MAX_SIZE) { let ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h); w *= ratio; h *= ratio; }
+                const tmpCvs = document.createElement('canvas'); tmpCvs.width = w; tmpCvs.height = h;
+                tmpCvs.getContext('2d').drawImage(bgImg, 0, 0, w, h);
+                savedBg = tmpCvs.toDataURL('image/jpeg', 0.6); 
+            }
+            const projectData = { points: points, bgImage: savedBg, dxf: dxfEntities, bgConfig: bgConfig };
+            localStorage.setItem('cnc_v39', JSON.stringify(projectData));
+            alert('✅ 專案已完整儲存！');
+        } catch (e) { alert('⚠️ 儲存失敗！'); }
+    }
+
     window.onload = () => { 
-        const s = localStorage.getItem('cnc_v37'); 
-        if(s) { points = JSON.parse(s); renderList(); } 
+        const s = localStorage.getItem('cnc_v39'); 
+        if(s) { 
+            try {
+                const data = JSON.parse(s);
+                if (Array.isArray(data)) { points = data; } 
+                else {
+                    points = data.points || []; dxfEntities = data.dxf || [];
+                    if (data.bgConfig) {
+                        bgConfig = data.bgConfig;
+                        document.getElementById('bg-scale').value = bgConfig.scale; document.getElementById('bg-opacity').value = bgConfig.opacity;
+                        document.getElementById('bg-z').value = bgConfig.z; document.getElementById('bg-x').value = bgConfig.x;
+                    }
+                    if (data.bgImage) { bgImg.onload = () => { bgLoaded = true; update(); }; bgImg.src = data.bgImage; }
+                }
+                renderList(); 
+            } catch(e) { console.error(e); }
+        } 
         cvs.width = vbox.clientWidth; cvs.height = vbox.clientHeight; zoomExtents(); 
     };
     window.onresize = update; 
